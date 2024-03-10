@@ -6,12 +6,12 @@
 #define JUKEBOX                 // real-time endless auto-compose acid tunes
 #define JUKEBOX_PLAY_ON_START   // should it play on power on, or should it wait for "boot" button to be pressed
 #define MIDI_RAMPS              // this is what makes automated Cutoff-Reso-FX turn
-#define TEST_POTS               // experimental interactivity with potentiometers connected to POT_PINS[] defined below
+//#define TEST_POTS               // experimental interactivity with potentiometers connected to POT_PINS[] defined below
 
 //#define USE_INTERNAL_DAC      // use this for testing, SOUND QUALITY SACRIFICED: NOISY 8BIT STEREO
 //#define NO_PSRAM              // if you don't have PSRAM on your board, then use this define, but REVERB TO BE SACRIFICED, ONE SMALL DRUM KIT SAMPLES USED 
 
-#define LOLIN_RGB               // Flashes the LOLIN S3 buildin RGB-LED
+//#define LOLIN_RGB               // Flashes the LOLIN S3 buildin RGB-LED
 
 //#define DEBUG_ON              // note that debugging eats ticks initially belonging to real-time tasks, so sound output will be spoild in most cases, turn it off for production build
 //#define DEBUG_MASTER_OUT      // serial monitor plotter will draw the output waveform
@@ -23,7 +23,7 @@
 //#define DEBUG_MIDI
 
 //#define MIDI_VIA_SERIAL       // use this option to enable Hairless MIDI on Serial port @115200 baud (USB connector), THIS WILL BLOCK SERIAL DEBUGGING as well
-#define MIDI_VIA_SERIAL2        // use this option if you want to operate by standard MIDI @31250baud, UART2 (Serial2), 
+//#define MIDI_VIA_SERIAL2        // use this option if you want to operate by standard MIDI @31250baud, UART2 (Serial2), 
 #define MIDIRX_PIN      4       // this pin is used for input when MIDI_VIA_SERIAL2 defined (note that default pin 17 won't work with PSRAM)
 #define MIDITX_PIN      15      // this pin will be used for output (not implemented yet) when MIDI_VIA_SERIAL2 defined
 
@@ -94,12 +94,12 @@ const float ONE_DIV_TWOPI = 1.0f/TWOPI;
   #define DEFAULT_DRUMKIT 4           // /data/4/ folder
   #define SAMPLECNT       8           // how many samples we prepare (here just 8)
 #else
-//  #define PRELOAD_ALL                 // allows operating all the samples in realtime
+  #define PRELOAD_ALL                 // allows operating all the samples in realtime
   #define PSRAM_SAMPLER_CACHE 3145728 // bytes, we are going to preload ALL the samples from FLASH to PSRAM
                                       // we divide samples by octaves to use modifiers to particular instruments, not just note numbers
                                       // i.e. we know that all the "C" notes in all octaves are bass drums, and CC_808_BD_TONE affects all BD's
   #define SAMPLECNT       (7 * 12)    // how many samples we prepare (8 octaves by 12 samples)
-  #define DEFAULT_DRUMKIT 0           // in my /data /0 has a massive bassdrum , /6 = 808 samples
+  #define DEFAULT_DRUMKIT 7           // in my /data /0 has a massive bassdrum , /6 = 808 samples
 #endif
 
 #define TINY 1e-32;
