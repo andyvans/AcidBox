@@ -99,7 +99,7 @@ const float ONE_DIV_TWOPI = 1.0f/TWOPI;
                                       // we divide samples by octaves to use modifiers to particular instruments, not just note numbers
                                       // i.e. we know that all the "C" notes in all octaves are bass drums, and CC_808_BD_TONE affects all BD's
   #define SAMPLECNT       (7 * 12)    // how many samples we prepare (8 octaves by 12 samples)
-  #define DEFAULT_DRUMKIT 7           // in my /data /0 has a massive bassdrum , /6 = 808 samples
+  #define DEFAULT_DRUMKIT 0           // in my /data /0 has a massive bassdrum , /6 = 808 samples
 #endif
 
 #define TINY 1e-32;
