@@ -56,9 +56,8 @@ static void IRAM_ATTR mixer() { // sum buffers
       mix_buf_r[current_out_buf][i] = (synth1_out_r + synth2_out_r + drums_out_r + dly_r);
 #endif
       mono_mix = 0.5f * (mix_buf_l[current_out_buf][i] + mix_buf_r[current_out_buf][i]);
-      Comp.Process(mono_mix);     // calculate gain based on a mono mix
-
-      // AvS comment out if the are issues with the compressor
+      //    Comp.Process(mono_mix);     // calculate gain based on a mono mix
+      
       Comp.Process(drums_out_l*0.25f);  // calc compressor gain, side-chain driven by drums
 
 
