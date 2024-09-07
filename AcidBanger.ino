@@ -52,11 +52,11 @@
 #define CRASH_NOTE              9 //010
 
 // Pin numbers to which are buttons attached (connect one side of button to pin, the other to ground)
-#define GEN_SYNTH1_BUTTON_PIN   23
-#define GEN_SYNTH2_BUTTON_PIN   23
-#define GEN_NOTES_BUTTON        23
-#define GEN_DRUM_BUTTON         23
-#define PLAY_BUTTON             0
+#define GEN_SYNTH1_BUTTON_PIN   15
+#define GEN_SYNTH2_BUTTON_PIN   16
+#define GEN_NOTES_BUTTON        17
+#define GEN_DRUM_BUTTON         18
+#define PLAY_BUTTON             8
 #define MEM1_BUTTON             23
 #define MEM2_BUTTON             23
 #define MEM3_BUTTON             23
@@ -376,7 +376,8 @@ static inline uint16_t myRandom(uint16_t max) {
 
 static void read_button(struct Button *button)
 {
-  if (button->numb == 5) { // start/stop is a real button "boot" ( GPIO0 )
+  // AVS Fix so all buttons work
+  if (true){ //if (button->numb == 5) { // start/stop is a real button "boot" ( GPIO0 )
     button->history = (button->history << 1) | (digitalRead(button->pin) == HIGH);
   } else {
     button->history = 0;
@@ -1225,18 +1226,22 @@ void run_ui() {
 
   // Handle pattern generation
   if (just_pressed(ButPat1)) {
+    DEBUG("pattern1 pressed");
     mem_generate_melody_and_seed(cur_memory, 0);
     print_memory(cur_memory);
   }
   if (just_pressed(ButPat1 + 1)) {
+    DEBUG("pattern2 pressed");
     mem_generate_melody_and_seed(cur_memory, 1);
     print_memory(cur_memory);
   }
   if (just_pressed(ButNotes)) {
+    DEBUG("notes pressed");
     mem_generate_note_set(cur_memory);
     print_memory(cur_memory);
   }
   if (just_pressed(ButDrums)) {
+    DEBUG("drums pressed");
     mem_generate_drums(cur_memory, DrumStraight);
     print_memory(cur_memory);
   }
@@ -1244,14 +1249,10 @@ void run_ui() {
   // Handle play
   if (just_pressed(ButPlay)) {
     if (midi_playing) {
-#ifdef DEBUG_JUKEBOX
       DEBUG("stopping midi");
-#endif
       do_midi_stop();
     } else {
-#ifdef DEBUG_JUKEBOX
       DEBF("starting midi clock, dt=%lu", midi_tick_ms);
-#endif
       last_midi_tick = now;
       do_midi_start();
       do_midi_tick();
