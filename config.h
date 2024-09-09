@@ -108,6 +108,8 @@ const float ONE_DIV_TWOPI = 1.0f/TWOPI;
 #define LED_BUILTIN 0
 #endif
 
+#define LED_BEAT_PIN    13  // AVS Additional beat LED
+
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
 // Debugging macros

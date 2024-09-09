@@ -52,10 +52,10 @@
 #define CRASH_NOTE              9 //010
 
 // Pin numbers to which are buttons attached (connect one side of button to pin, the other to ground)
-#define GEN_SYNTH1_BUTTON_PIN   15
-#define GEN_SYNTH2_BUTTON_PIN   16
-#define GEN_NOTES_BUTTON        17
-#define GEN_DRUM_BUTTON         18
+#define GEN_SYNTH1_BUTTON_PIN   16
+#define GEN_SYNTH2_BUTTON_PIN   17
+#define GEN_NOTES_BUTTON        18
+#define GEN_DRUM_BUTTON         15
 #define PLAY_BUTTON             8
 #define MEM1_BUTTON             23
 #define MEM2_BUTTON             23
@@ -317,7 +317,9 @@ static void send_midi_noteoff(byte chan, byte note) {
 static void init_midi() {
   //  Serial.begin(115200);
   //  MIDI.begin(MIDI_CHANNEL_OMNI);
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);  
+  pinMode(LED_BEAT_PIN, OUTPUT); // AVS Additional LED
+  
   for (int i = 0; i < ButLast; i++) {
     init_button(&buttons[i], button_pins[i], i + 1 );
   }
@@ -489,6 +491,7 @@ void sequencer_step(byte step) {
   }
   if (step % 4 == 0 || step == 1) {
     digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(LED_BEAT_PIN, HIGH);
     #ifdef LOLIN_RGB
       pixels.setPixelColor(0, pixels.Color(rand() % 32, rand() % 32, rand() % 32));
       pixels.show();
@@ -499,6 +502,7 @@ void sequencer_step(byte step) {
 #endif
   }  else {
     digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_BEAT_PIN, LOW);
     #ifdef LOLIN_RGB
       pixels.setPixelColor(0, pixels.Color(0,0,0));
       pixels.show();
