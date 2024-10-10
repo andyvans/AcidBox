@@ -1,5 +1,5 @@
 #define PROG_NAME       "ESP32 AcidBox"
-#define VERSION         "v.1.3.0"
+#define VERSION         "v.1.3.3"
 
 
 
@@ -260,3 +260,7 @@ const float cutoff_reso_avg = 3.19f;
 };
 const float wfolder_overdrive_avg = 41.225f;
 */
+
+
+inline float fast_shape(float x);
+static __attribute__((always_inline)) inline float one_div(float a) ;
