@@ -1,19 +1,19 @@
 #define PROG_NAME       "ESP32 AcidBox"
 #define VERSION         "v.1.3.3"
 
-
+#define BOARD_HAS_UART_CHIP
 
 #define JUKEBOX                 // real-time endless auto-compose acid tunes
 #define JUKEBOX_PLAY_ON_START   // should it play on power on, or should it wait for "boot" button to be pressed
-#define MIDI_RAMPS              // this is what makes automated Cutoff-Reso-FX turn
+//#define MIDI_RAMPS              // this is what makes automated Cutoff-Reso-FX turn
 //#define TEST_POTS               // experimental interactivity with potentiometers connected to POT_PINS[] defined below
 
 //#define USE_INTERNAL_DAC      // use this for testing, SOUND QUALITY SACRIFICED: NOISY 8BIT STEREO
 //#define NO_PSRAM              // if you don't have PSRAM on your board, then use this define, but REVERB TO BE SACRIFICED, ONE SMALL DRUM KIT SAMPLES USED 
 
-//#define LOLIN_RGB               // Flashes the LOLIN S3 buildin RGB-LED
+//#define LOLIN_RGB               // Flashes the LOLIN S3 built-in RGB-LED
 
-//#define DEBUG_ON              // note that debugging eats ticks initially belonging to real-time tasks, so sound output will be spoiled in most cases, turn it off for production build
+//#define DEBUG_ON              // note that debugging eats ticks initially belonging to real-time tasks, so sound output will be spoild in most cases, turn it off for production build
 //#define DEBUG_MASTER_OUT      // serial monitor plotter will draw the output waveform
 //#define DEBUG_SAMPLER
 //#define DEBUG_SYNTH
@@ -32,7 +32,7 @@
 #define I2S_BCLK_PIN    5       // I2S BIT CLOCK pin (BCL BCK CLK)
 #define I2S_WCLK_PIN    7       // I2S WORD CLOCK pin (WCK WCL LCK)
 #define I2S_DOUT_PIN    6       // to I2S DATA IN pin (DIN D DAT)
-const uint8_t POT_PINS[POT_NUM] = {40, 41, 42};
+const uint8_t POT_PINS[POT_NUM] = {15, 16, 17};
 #elif defined(CONFIG_IDF_TARGET_ESP32)
 #define I2S_BCLK_PIN    5       // I2S BIT CLOCK pin (BCL BCK CLK)
 #define I2S_WCLK_PIN    19      // I2S WORD CLOCK pin (WCK WCL LCK)
@@ -54,6 +54,7 @@ float bpm = 130.0f;
 
 const float DIV_SAMPLE_RATE = 1.0f / (float)SAMPLE_RATE;
 const float DIV_2SAMPLE_RATE = 0.5f / (float)SAMPLE_RATE;
+const float TWO_DIV_16383 = 1.22077763e-04f;
 
 #define TABLE_BIT  		        10UL				// bits per index of lookup tables for waveforms, exp(), sin(), cos() etc. 10 bit means 2^10 = 1024 samples
 #define TABLE_SIZE            (1<<TABLE_BIT)        // samples used for lookup tables (it works pretty well down to 32 samples due to linear approximation, so listen and free some memory at your choice)
@@ -112,24 +113,41 @@ const float ONE_DIV_TWOPI = 1.0f/TWOPI;
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
-// Debugging macros
-#ifndef MIDI_VIA_SERIAL
-  #ifndef DEB
-    #ifdef DEBUG_ON
-      #define DEB(...) Serial.print(__VA_ARGS__) 
-      #define DEBF(...) Serial.printf(__VA_ARGS__) 
-      #define DEBUG(...) Serial.println(__VA_ARGS__) 
-    #else
-      #define DEB(...)
-      #define DEBF(...)
-      #define DEBUG(...)
-    #endif
-  #endif
-#else
-      #define DEB(...)
-      #define DEBF(...)
-      #define DEBUG(...)
+#if (defined ARDUINO_LOLIN_S3_PRO)
+#undef BOARD_HAS_UART_CHIP
 #endif
+
+#if (defined BOARD_HAS_UART_CHIP)
+  #define MIDI_PORT_TYPE HardwareSerial
+  #define MIDI_PORT Serial
+  #define DEBUG_PORT Serial
+#else
+  #if (ESP_ARDUINO_VERSION_MAJOR < 3)
+    #define MIDI_PORT_TYPE HWCDC
+    #define MIDI_PORT USBSerial
+    #define DEBUG_PORT Serial
+  #else
+    #define MIDI_PORT_TYPE HardwareSerial
+    #define MIDI_PORT Serial
+    #define DEBUG_PORT Serial
+  #endif
+#endif
+
+#ifdef MIDI_VIA_SERIAL
+  #undef DEBUG_ON
+#endif
+
+// debug macros
+#ifdef DEBUG_ON
+  #define DEB(...)    DEBUG_PORT.print(__VA_ARGS__) 
+  #define DEBF(...)   DEBUG_PORT.printf(__VA_ARGS__)
+  #define DEBUG(...)  DEBUG_PORT.println(__VA_ARGS__)
+#else
+  #define DEB(...)
+  #define DEBF(...)
+  #define DEBUG(...)
+#endif
+
 
 // normalizing matrices for TB filter and distortion/overdrive pairs
 #define NORM1_DEPTH 1.0f 
@@ -260,6 +278,25 @@ const float cutoff_reso_avg = 3.19f;
 };
 const float wfolder_overdrive_avg = 41.225f;
 */
+
+static const float tuning[128] = {
+  0.500000f, 0.500000f, 0.500000f, 0.500000f, 0.500000f, 0.529732f, 0.529732f, 0.529732f, 
+  0.529732f, 0.529732f, 0.561231f, 0.561231f, 0.561231f, 0.561231f, 0.561231f, 0.594604f, 
+  0.594604f, 0.594604f, 0.594604f, 0.594604f, 0.594604f, 0.629961f, 0.629961f, 0.629961f, 
+  0.629961f, 0.629961f, 0.667420f, 0.667420f, 0.667420f, 0.667420f, 0.667420f, 0.707107f, 
+  0.707107f, 0.707107f, 0.707107f, 0.707107f, 0.749154f, 0.749154f, 0.749154f, 0.749154f, 
+  0.749154f, 0.793701f, 0.793701f, 0.793701f, 0.793701f, 0.793701f, 0.840896f, 0.840896f, 
+  0.840896f, 0.840896f, 0.840896f, 0.890899f, 0.890899f, 0.890899f, 0.890899f, 0.890899f, 
+  0.943874f, 0.943874f, 0.943874f, 0.943874f, 0.943874f, 1.000000f, 1.000000f, 1.000000f, 
+  1.000000f, 1.000000f, 1.000000f, 1.059463f, 1.059463f, 1.059463f, 1.059463f, 1.059463f, 
+  1.122462f, 1.122462f, 1.122462f, 1.122462f, 1.122462f, 1.189207f, 1.189207f, 1.189207f, 
+  1.189207f, 1.189207f, 1.259921f, 1.259921f, 1.259921f, 1.259921f, 1.259921f, 1.334840f, 
+  1.334840f, 1.334840f, 1.334840f, 1.334840f, 1.414214f, 1.414214f, 1.414214f, 1.414214f, 
+  1.414214f, 1.498307f, 1.498307f, 1.498307f, 1.498307f, 1.498307f, 1.587401f, 1.587401f, 
+  1.587401f, 1.587401f, 1.587401f, 1.681793f, 1.681793f, 1.681793f, 1.681793f, 1.681793f, 
+  1.681793f, 1.781797f, 1.781797f, 1.781797f, 1.781797f, 1.781797f, 1.887749f, 1.887749f, 
+  1.887749f, 1.887749f, 1.887749f, 2.000000f, 2.000000f, 2.000000f, 2.000000f, 2.000000f
+};
 
 
 inline float fast_shape(float x);
