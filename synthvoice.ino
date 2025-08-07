@@ -18,11 +18,13 @@ void SynthVoice::Init() {
   _deltaStep = 0.0f;
   _slideMs = 60.0f;
   _phaze = 0.0f;
-  mva1.n = 0 ;
+  mvaStack.n = 0 ;
   _pan = 0.5;
 
   AmpEnv.init(SAMPLE_RATE);
   FltEnv.init(SAMPLE_RATE);
+  osc.setSampleRate(SAMPLE_RATE);
+  osc.setWaveform(MipmapOscillator::Waveform::Saw);
   // parameters of envelopes
   _ampAttackMs = 0.5;
   _ampDecayMs = 1230.0;
@@ -67,22 +69,19 @@ inline float SynthVoice::getSample() {
     ampEnv = AmpEnv.process() * _k_acc;
     
     if (AmpEnv.isRunning()) {
-      // samp = (float)((1.0f - _waveMix) * lookupTable(*(tables[_waveBase]), _phaze)) + (float)(_waveMix * lookupTable(*(tables[_waveBase+1]), _phaze)) ; // lookup and blend waveforms
-       samp = (float)((1.0f - _waveMix) * lookupTable(exp_square_tbl, _phaze)) + (float)(_waveMix * lookupTable(saw_tbl, _phaze)) ; // lookup and blend waveforms
-      // samp = _phaze < HALF_TABLE ? 2 * _waveMix * _phaze * DIV_TABLE_SIZE - 1.0f   :    2 * _waveMix * (_phaze * DIV_TABLE_SIZE - 1.0f) + 1.0f; 
+      samp = osc.process();
     } else {
       samp = 0.0f;
     }
     final_cut = (float)_filter_freq_cut * (0.8f + (_envMod+0.1f) * (3*filtEnv - 0.3f) * (_accentation + 0.2f) );
-    //final_cut = (float)_filter_freq * ( (float)_envMod * ((float)filtEnv - 0.2f) + 1.3f * (float)_accentation + 1.0f );
-//    final_cut = filtDeclicker.getSample( final_cut );
     Filter.SetCutoff( final_cut );    
 
-    
+    /*
      decimator++;
      if (decimator % 128 == 0 && _index == 0) {
-      DEBF("%f\r\n", final_cut);
+      DEBF("%f\r\n", samp);
      }
+    */
     
     samp = highpass1.getSample(samp);         // pre-filter highpass, following open303
     
@@ -107,42 +106,7 @@ inline float SynthVoice::getSample() {
    
     samp *=  _compens;
 
-    if ((_slide || _portamento) && _deltaStep != 0.0f) {     // portamento / slide processing
-      if (fabs(_effectiveStep - _currentStep) >= fabs(_deltaStep)) {
-        _currentStep += _deltaStep;
-      } else {
-        _currentStep = _effectiveStep;
-        _deltaStep = 0.0f;
-      }
-    }
 
-    // Increment and wrap phase
-    _phaze += _currentStep;
-    /* 
-     *  // this is more accurate classical approach, but it gives quite early audible aliasing when not using band-limited samples
-    if ( _phaze >= TABLE_SIZE) {
-       _phaze -= TABLE_SIZE ;
-    */
-
-
-    // this is less accurate in terms of pitch, especially at higher notes, but at this price you have quite no aliasing, as phase reset produces no moire
-    if ( _phaze >= TABLE_SIZE) {
-      if (_wave_cnt == 3) { // we drop the phase every 4 periods
-        _wave_cnt = 0; 
-        _phaze = 0.0f; // we reset the phase, so aliasing will be present in the form of lower octave tones which is less annoying
-      } else {
-        _wave_cnt++;
-        _phaze -= TABLE_SIZE ;
-      } 
-    }
-    
-    /*
-    // this is less accurate in terms of pitch, especially at higher notes, but at this price you have quite no aliasing, as phase reset produces no moire
-    if ( _phaze >= TABLE_SIZE) {
-      _phaze = 2.0f * (float)( (int)(0.5f * (_phaze - (float)TABLE_SIZE)) ); 
-      DEBF("%0.5f\r\n", _phaze);
-    }*/
-    
     //synth_buf[_index][i] = fast_shape(samp); // mono limitter
     return  samp;  
 }
@@ -166,10 +130,9 @@ inline void SynthVoice::SetEnvModLevel(float normalized_val) {
 
 
 inline void SynthVoice::PitchBend(int number) {
-  //
   float semi = ((((float)number + 8191.5f) * (float)TWO_DIV_16383 ) - 1.0f ) * 12.0f;
   _pitchbend = powf(1.059463f, semi);
-  _effectiveStep = _targetStep * _tuning * _pitchbend;
+  osc.setPitchbendMod(_pitchbend);
 }
 
 inline void SynthVoice::ParseCC(uint8_t cc_number , uint8_t cc_value) {
@@ -189,13 +152,11 @@ inline void SynthVoice::ParseCC(uint8_t cc_number , uint8_t cc_value) {
       _portamento = (cc_value >= 64);
       break;
     case CC_303_WAVEFORM:
-      /*
-       // actually we can gradually switch between several waveforms, basing on the CC value, blending neighbour two waveforms
-        _waveBase = (uint8_t)(((float)cc_value * 2.99999f * MIDI_NORM)) ; // 0, 1, 2 range
-        DEBF("base %d\r\n", _waveBase );
-        _waveMix = ((float)cc_value - (float)(_waveBase*42.33333f)) * MIDI_NORM * 3.0f;
-        DEBF("mix %0.5f\r\n", _waveMix );*/
-      _waveMix = (float)cc_value * MIDI_NORM;
+      if (cc_value > 63) {
+        osc.setWaveform(MipmapOscillator::Waveform::Saw);
+      } else {
+        osc.setWaveform(MipmapOscillator::Waveform::Square);
+      }
       break;
     case CC_303_RESO:
       _reso = cc_value * MIDI_NORM ;
@@ -245,7 +206,7 @@ inline void SynthVoice::ParseCC(uint8_t cc_number , uint8_t cc_value) {
       break;
     case CC_303_TUNING:
       _tuning = tuning[cc_value];
-      _effectiveStep = _targetStep * _tuning * _pitchbend;
+      osc.setTuningMod(_tuning);
       break;
   }
 }
@@ -259,30 +220,30 @@ inline void SynthVoice::ParseCC(uint8_t cc_number , uint8_t cc_value) {
 
 inline void SynthVoice::on_midi_noteON(uint8_t note, uint8_t velocity)
 {
-  mva_note_on(&mva1, note, (velocity >= 80));
+  mva_alloc(note, (velocity >= 80));
 
-  bool slide = (mva1.n > 1);
-  bool accent = (mva1.accents[0]);
-  note = mva1.notes[0] ;
+  bool slide = (mvaStack.n > 1);
+  bool accent = (mvaStack.accents[0]);
+  note = mvaStack.notes[0] ;
   note_on(note, slide, accent);
 }
 
 inline void SynthVoice::on_midi_noteOFF(uint8_t note, uint8_t velocity)
 {
-  if (mva1.n == 0) {
+  if (mvaStack.n == 0) {
     return;
   }
-  uint8_t tmp_note = mva1.notes[0];
-  uint8_t tmp_accent = mva1.accents[0];
-  mva_note_off(&mva1, note);
+  uint8_t tmp_note = mvaStack.notes[0];
+  uint8_t tmp_accent = mvaStack.accents[0];
+  mva_free(note);
 
-  if (mva1.n > 0)
+  if (mvaStack.n > 0)
   {
-    if (mva1.notes[0] != tmp_note)
+    if (mvaStack.notes[0] != tmp_note)
     {
-      bool accent = (mva1.accents[0] );
+      bool accent = (mvaStack.accents[0] );
       bool slide = 1;
-      note = mva1.notes[0];
+      note = mvaStack.notes[0];
 
       note_on(note, slide, accent);
     }
@@ -292,74 +253,72 @@ inline void SynthVoice::on_midi_noteOFF(uint8_t note, uint8_t velocity)
   }
 }
 
-void SynthVoice::mva_note_on(mva_data *p, uint8_t note, uint8_t accent)
+void SynthVoice::mva_alloc(uint8_t note, uint8_t accent)
 {
   uint8_t s = 0;
   uint8_t i = 0;
 
   // shift all notes back
-  uint8_t m = p->n + 1;
+  uint8_t m = mvaStack.n + 1;
   m = (m > MIDI_MVA_SZ ? MIDI_MVA_SZ : m);
   s = m;
   i = m;
   while (i > 0)
   {
     --s;
-    p->notes[i] = p->notes[s];
-    p->accents[i] = p->accents[s];
+    mvaStack.notes[i] = mvaStack.notes[s];
+    mvaStack.accents[i] = mvaStack.accents[s];
     i = s;
   }
   // put the new note first
-  p->notes[0] = note;
-  p->accents[0] = accent;
+  mvaStack.notes[0] = note;
+  mvaStack.accents[0] = accent;
   // update the voice counter
-  p->n = m;
+  mvaStack.n = m;
 }
 
-void SynthVoice::mva_note_off(mva_data *p, uint8_t note)
+void SynthVoice::mva_free(uint8_t note)
 {
   uint8_t s = 0;
 
   // find if the note is actually in the buffer
-  uint8_t m = p->n;
+  uint8_t m = mvaStack.n;
   uint8_t i = m;
   while (i) // count backwards (oldest notes first)
   {
     --i;
-    if (note == p->notes[i] )
+    if (note == mvaStack.notes[i] )
     {
       // found it!
-      if (i < (p->n - 1)) // don't shift if this was the last note..
+      if (i < (mvaStack.n - 1)) // don't shift if this was the last note..
       {
         // remove it now.. just shift everything after it
         s = i;
         while (i < m)
         {
           ++s;
-          p->notes[i] = p->notes[s];
-          p->accents[i] = p->accents[s];
+          mvaStack.notes[i] = mvaStack.notes[s];
+          mvaStack.accents[i] = mvaStack.accents[s];
           i = s;
         }
       }
       // update the voice counter
       if (m > 0) {
-        p->n = m - 1;
+        mvaStack.n = m - 1;
       }
       break;
     }
   }
 }
 
-void SynthVoice::mva_reset(mva_data *p) {
-  p->n = 0;
+void SynthVoice::mva_reset() {
+  mvaStack.n = 0;
 }
 
 void  SynthVoice::note_on(uint8_t midiNote, bool slide, bool accent) {
   _accent = accent;
   _slide = slide || _portamento;
-  _targetStep = midi_tbl_steps[midiNote];
-  _effectiveStep = _targetStep * _tuning * _pitchbend;
-  if (mva1.n == 1) {
+  if (mvaStack.n == 1) {
     if (_accent) {
       _accentation = _accentLevel; 
       AmpEnv.setReleaseTimeMs(_ampReleaseMs * 50.0f);
@@ -374,13 +333,11 @@ void  SynthVoice::note_on(uint8_t midiNote, bool slide, bool accent) {
   }
   AmpEnv.setAttackTimeMs(_ampAttackMs);
   AmpEnv.setDecayTimeMs(_ampDecayMs);
-  if (_slide) {
-    _deltaStep = (_effectiveStep - _currentStep) * (1000.0f * DIV_SAMPLE_RATE / _slideMs );
-  } else {
-    _currentStep = _effectiveStep;
-    _deltaStep = 0.0f ;
-    _phaze = 0.0f;
-    AmpEnv.retrigger(Adsr::END_NOW);
+  osc.setGlide(_slide);
+  osc.setFrequency(midi_pitches[midiNote]);
+  if (!_slide) {
+    osc.resetPhase();
+    AmpEnv.retrigger(Adsr::END_FAST);
     FltEnv.retrigger(false);    
   }
   _k_acc = (1.0f + 0.6f * _accentation);

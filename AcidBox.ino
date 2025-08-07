@@ -158,7 +158,7 @@ void IRAM_ATTR onTimer2() {
 // Core0 task 
 // static void audio_task1(void *userData) {
 static void IRAM_ATTR audio_task1(void *userData) {
-  
+  vTaskDelay(50);  
   while (true) {
     taskYIELD(); 
 //    if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) { // we need all the generators to fill the buffers here, so we wait
@@ -205,6 +205,7 @@ static void IRAM_ATTR audio_task1(void *userData) {
 // task for Core1, which tipically runs user's code on ESP32
 // static void IRAM_ATTR audio_task2(void *userData) {
 static void IRAM_ATTR audio_task2(void *userData) {
+  vTaskDelay(50);
   while (true) {
     taskYIELD();
  /*   

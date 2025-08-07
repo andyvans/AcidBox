@@ -1,6 +1,7 @@
 #pragma once
 #include "adsr.h"
 #include "ad.h"
+#include "oscillator.h"
 
 #define FILTER_TYPE 2       // 0 = Moogladder by Victor Lazzarini
                             // 1 = Tim Stilson's model by Aaron Krajeski
@@ -36,7 +37,7 @@ typedef struct
   uint8_t notes[MIDI_MVA_SZ];
   bool accents[MIDI_MVA_SZ];
   uint8_t n;
-} mva_data;
+} mva_stack_t;
 
 class SynthVoice {
 public:
@@ -69,7 +70,7 @@ public:
   inline void SetIndex(uint8_t ind)       {_index = ind;};
   inline void ParseCC(uint8_t cc_number, uint8_t cc_value);
   inline void PitchBend(int number) ;
-  inline void allNotesOff()               {mva1.n=0;  AmpEnv.end(Adsr::END_FAST); FltEnv.end(false);};
+  inline void allNotesOff()               {mvaStack.n=0;  AmpEnv.end(Adsr::END_FAST); FltEnv.end(false);};
   inline float GetAmpEnv();                // call once per sample
   inline float GetFilterEnv();             // call once per sample
   inline float GetPan()                 {return _pan;}
@@ -79,7 +80,7 @@ public:
   float _sendReverb = 0.0f;
   int WORD_ALIGNED_ATTR  midiNotes[2] = {-1, -1};
 
-  mva_data mva1;
+  mva_stack_t mvaStack;
 
 #if FILTER_TYPE == 0
   MoogLadder        Filter;
@@ -156,9 +157,9 @@ private:
   float _compens = 1.0f;
   float _fx_compens = 1.0f;
   float _flt_compens = 1.0f;
-  void mva_note_on(mva_data *p, uint8_t note, uint8_t accent);
-  void mva_note_off(mva_data *p, uint8_t note);
-  void mva_reset(mva_data *p);
+  void mva_alloc(uint8_t note, uint8_t accent);
+  void mva_free(uint8_t note);
+  void mva_reset();
   void note_off() ;
   void note_on(uint8_t midiNote, bool slide, bool accent) ;
   inline void calcEnvModScalerAndOffset();
@@ -182,4 +183,6 @@ private:
 //  RAT               Distortion;
   
   Overdrive         Drive;
+
+  MipmapOscillator  osc;
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #define PROG_NAME       "ESP32 AcidBox"
-#define VERSION         "v.1.4.0 S3"
+#define VERSION         "v.1.5.0 S3"
 
 #define BOARD_HAS_UART_CHIP
 
@@ -18,12 +18,12 @@
 
 #define DEBUG_ON              // note that debugging eats ticks initially belonging to real-time tasks, so sound output will be spoild in most cases, turn it off for production build
 //#define DEBUG_MASTER_OUT      // serial monitor plotter will draw the output waveform
-#define DEBUG_SAMPLER
+//#define DEBUG_SAMPLER
 //#define DEBUG_SYNTH
 //#define DEBUG_JUKEBOX
 //#define DEBUG_FX
 //#define DEBUG_TIMING
-#define DEBUG_MIDI
+//#define DEBUG_MIDI
 
 #define MIDI_USB_DEVICE                     // use this option if you want to operate via USB with the sampler seen as a MIDI device (-50 kBytes of available RAM)
 // #define MIDI_VIA_SERIAL       // use this option to enable Hairless MIDI on Serial port @115200 baud (USB connector), THIS WILL BLOCK SERIAL DEBUGGING as well
