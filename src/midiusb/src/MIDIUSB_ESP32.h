@@ -13,7 +13,7 @@
 
 #include "USB.h"
 
-#include "src/midiusb/src/MIDIUSB_Defs.h"
+#include "MIDIUSB_Defs.h"
 
 #include "HardwareSerial.h"
 #include "HWCDC.h"
