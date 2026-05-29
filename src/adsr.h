@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 
 /** Distinct stages that the phase of the envelope can be located in.
 - IDLE   = located at phase location 0, and not currently running

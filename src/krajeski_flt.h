@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 
 #ifndef KRAJESKI_LADDER_H
 #define KRAJESKI_LADDER_H

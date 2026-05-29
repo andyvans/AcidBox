@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 
 /**
 This is an AD envelope generator made of an ADSR generator by cutting SR )))

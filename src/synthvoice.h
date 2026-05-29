@@ -1,4 +1,6 @@
 #pragma once
+#include <Arduino.h>
+
 #include "adsr.h"
 #include "ad.h"
 #include "oscillator.h"

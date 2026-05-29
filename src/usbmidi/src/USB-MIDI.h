@@ -28,7 +28,7 @@ SOFTWARE.
 #include <MIDIUSBHOST_ESP32.h>
 #else
 //#include <MIDIUSB_ESP32.h>
-#include "src/midiusb/src/MIDIUSB_ESP32.h"
+#include "../../midiusb/src/MIDIUSB_ESP32.h"
 #endif
 #else
 #include "MIDIUSB.h"

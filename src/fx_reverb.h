@@ -22,6 +22,8 @@
  * 
  */ 
 #pragma once
+#include <Arduino.h>
+
 #ifdef BOARD_HAS_PSRAM 
   #define REV_MULTIPLIER 1.797f
   #define MALLOC_CAP        (MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)

@@ -1,3 +1,4 @@
+#include "config.h"
 
 float noteToFreq(int note) {
     return (440.0f / 32.0f) * pow(2, ((float)(note - 9) / 12.0));

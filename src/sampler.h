@@ -1,3 +1,6 @@
+#pragma once
+#include <Arduino.h>
+
 #ifndef SAMPLER_H
 #define SAMPLER_H
 

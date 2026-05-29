@@ -1,4 +1,6 @@
 #pragma once
+#include <Arduino.h>
+
 #ifndef FXFCR_H
 #define FXFCR_H
 /*

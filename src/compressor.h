@@ -2,6 +2,9 @@
 #ifndef DSY_COMPRESSOR_H
 #define DSY_COMPRESSOR_H
 
+#include <cstddef>
+#include <cmath>
+
 
 /** dynamics compressor
 

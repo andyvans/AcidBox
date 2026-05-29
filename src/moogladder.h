@@ -1,4 +1,6 @@
 #pragma once
+#include <Arduino.h>
+
 #ifndef DSY_MOOGLADDER_H
 #define DSY_MOOGLADDER_H
  

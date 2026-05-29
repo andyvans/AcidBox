@@ -1,4 +1,6 @@
 #pragma once
+#include <Arduino.h>
+
 #ifndef DSY_WAVEFOFOLDER_H
 #define DSY_WAVEFOFOLDER_H
 

@@ -1,3 +1,6 @@
+#pragma once
+#include <Arduino.h>
+
 #ifndef rosic_BiquadFilter_h
 #define rosic_BiquadFilter_h
 

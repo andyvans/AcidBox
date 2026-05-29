@@ -38,7 +38,7 @@
 #endif
 
 #ifdef MIDI_USB_DEVICE
-  #include "src/usbmidi/src/USB-MIDI.h"
+  #include "usbmidi/src/USB-MIDI.h"
   USBMIDI_CREATE_INSTANCE(0, MIDI_usbDev);
 #endif
 
@@ -128,6 +128,29 @@ FxDelay Delay;
 FxReverb Reverb;
 #endif
 Compressor Comp;
+
+// Arduino IDE used tab-style single translation unit behavior. For PlatformIO,
+// we include dependent implementation units explicitly to preserve that model.
+#include "general.cpp"
+#include "tables.cpp"
+#include "midi_handler.cpp"
+#include "i2s_setup.cpp"
+#include "AcidBanger.cpp"
+#include "ad.cpp"
+#include "adsr.cpp"
+#include "compressor.cpp"
+#include "fx_filtercrusher.cpp"
+#include "krajeski_flt.cpp"
+#include "moogladder.cpp"
+#include "rosic_BiquadFilter.cpp"
+#include "rosic_OnePoleFilter.cpp"
+#include "rosic_TeeBeeFilter.cpp"
+#include "sampler.cpp"
+#include "synthvoice.cpp"
+#include "wavefolder.cpp"
+#ifdef MIDI_USB_DEVICE
+#include "midiusb/src/MIDIUSB_ESP32.cpp"
+#endif
 
 hw_timer_t * timer1 = NULL;            // Timer variables
 hw_timer_t * timer2 = NULL;            // Timer variables
@@ -325,6 +348,7 @@ DEBUG("setup done");
 }
 
 static uint32_t last_ms = micros();
+void regular_checks();
 
 /* 
  *  Finally, the LOOP () ***********************************************************************************************************

@@ -1,3 +1,6 @@
+#pragma once
+#include <Arduino.h>
+
 #ifndef rosic_OnePoleFilter_h
 #define rosic_OnePoleFilter_h
 

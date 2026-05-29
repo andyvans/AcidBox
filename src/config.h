@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 
 #define PROG_NAME       "ESP32 AcidBox"
 #define VERSION         "v.1.5.0 S3"
@@ -141,7 +142,7 @@ const float  NORM_RADIANS = ONE_DIV_TWOPI * TABLE_SIZE;
   #endif
 #endif
 
-#ifdef MIDI_VIA_SERIAL || MIDI_USB_DEVICE
+#if defined(MIDI_VIA_SERIAL) || defined(MIDI_USB_DEVICE)
   #undef DEBUG_ON
 #endif
 

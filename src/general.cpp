@@ -1,3 +1,4 @@
+#include "config.h"
 
 inline float bilinearLookup(float (&table)[16][16], float x, float y) {
   float const kmap = 0.1181f; // map from 0-127 to 0-14.99

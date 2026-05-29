@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 
 constexpr int mip_count = 6;
 constexpr int sizes[mip_count] = { 128, 256, 256, 512, 512, 1024 };

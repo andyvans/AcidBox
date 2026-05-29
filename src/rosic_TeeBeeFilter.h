@@ -1,3 +1,6 @@
+#pragma once
+#include <Arduino.h>
+
 #ifndef rosic_TeeBeeFilter_h
 #define rosic_TeeBeeFilter_h
 

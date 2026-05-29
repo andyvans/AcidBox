@@ -1,3 +1,6 @@
+#pragma once
+#include <Arduino.h>
+
 #ifndef MIDI_CONTROLS_H
 #define MIDI_CONTROLS_H
 

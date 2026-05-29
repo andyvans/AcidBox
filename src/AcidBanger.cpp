@@ -1,4 +1,6 @@
 #ifdef JUKEBOX
+#include "config.h"
+
 // This is The "Endless Acid Banger"
 //
 // Pattern generator code taken from
@@ -85,6 +87,15 @@
 #endif
 
 uint8_t current_drumkit = (DEFAULT_DRUMKIT*12); // offset for drum note numbers (instruments are groupped by 12)
+
+static void init_button(struct Button *button, byte pin, uint8_t num);
+static void init_instruments();
+static void init_patterns();
+static void do_midi_start();
+static void do_midi_stop();
+static void do_midi_ramps();
+static byte flip(byte percent_chance);
+static void check_midi_ramps(boolean force_restart);
 
 struct sSynthCCs {
   uint8_t cc_number;

@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 /*
  * This is a simple implementation of a delay line
  * - level adjustable
