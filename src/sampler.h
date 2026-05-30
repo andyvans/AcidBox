@@ -5,7 +5,7 @@
 #define SAMPLER_H
 
 #include <FS.h>
-#include <LittleFS.h>
+#include <FFat.h>
 #include "midi_config.h"
 #include "fx_filtercrusher.h"
 

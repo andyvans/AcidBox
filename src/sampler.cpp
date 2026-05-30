@@ -15,8 +15,12 @@
    2023-03-02 Copych, preload all 3MB of samples from flash to PSRAM to be able of switching kits in realtime
 */
 
+#include "config.h"
 #include "sampler.h"
 #include "samples.h"
+#include <esp_partition.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 /* You only need to format LittleFS the first time you run a
    test or else use the LittleFS plugin to create a partition
@@ -81,22 +85,19 @@ void Sampler::ScanContents(fs::FS &fs, const char *dirname, uint8_t levels) {
       DEBUG(file.name());
 #endif
       if ( levels ) {
-        str = (String)(dirname + (String)(file.name()) + '/');
-        ScanContents(fs, str.c_str(), levels - 1);
+        ScanContents(fs, file.path(), levels - 1);
       }
     } else {
 #ifdef DEBUG_SAMPLER
       DEB("  FILE: ");
-      DEB(dirname);
-      DEB(file.name());
+      DEB(file.path());
       DEB("\tSIZE: ");
       DEBUG(file.size());
 #endif
 
       if ( sampleInfoCount < SAMPLECNT ) {
-        str = (String)(file.name());
+        str = (String)(file.path());
        // shortInstr[ sampleInfoCount ] = str.substring(str.length() - 7, str.length() - 4);
-        str = (String)dirname + str;
 //        strncpy( samplePlayer[ sampleInfoCount ].filename, str.c_str() , 32);
         strncpy( filenames[ sampleInfoCount ], str.c_str() , 32);
         sampleInfoCount ++;
@@ -116,10 +117,57 @@ void Sampler::Init() {
 
   size_t toRead = 512, oldPointer = 0, buffPointer = 0;
 
-  if ( !LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)) {
-    DEBUG("LittleFS Mount Failed");
+  if ( !FFat.begin(true, "/ffat")) {
+    DEBUG("FFat Mount Failed");
     return;
   }
+  Serial.printf("=== FFat MOUNTED OK === total=%u used=%u\n", FFat.totalBytes(), FFat.usedBytes());
+  Serial.flush();
+
+  // --- Diagnostic ---
+  {
+    // Raw partition read
+    const esp_partition_t* part = esp_partition_find_first(
+        ESP_PARTITION_TYPE_DATA, (esp_partition_subtype_t)0x81, "ffat");
+    if (part) {
+      uint8_t raw[32];
+      esp_err_t err = esp_partition_read(part, 0, raw, 32);
+      Serial.printf("[PART] addr=0x%X size=0x%X err=%d data=", part->address, part->size, err);
+      for(int i=0; i<32; i++) Serial.printf("%02X ", raw[i]);
+      Serial.println();
+    } else {
+      Serial.println("[PART] partition not found!");
+    }
+
+    // POSIX file create test with errno
+    errno = 0;
+    FILE* fp = fopen("/ffat/test.txt", "w");
+    Serial.printf("[POSIX-W] fp=%p errno=%d\n", fp, errno);
+    if (fp) {
+      fputs("HELLO", fp);
+      fclose(fp);
+      // Now read back
+      errno = 0;
+      fp = fopen("/ffat/test.txt", "r");
+      Serial.printf("[POSIX-R] fp=%p errno=%d\n", fp, errno);
+      if (fp) {
+        char buf[8] = {0};
+        errno = 0;
+        size_t n = fread(buf, 1, 5, fp);
+        Serial.printf("[POSIX-RD] n=%d errno=%d eof=%d ferr=%d data=%02X %02X %02X %02X %02X\n",
+            n, errno, feof(fp), ferror(fp), buf[0], buf[1], buf[2], buf[3], buf[4]);
+        fclose(fp);
+      }
+    }
+
+    // Also try mkdir + file in subdir
+    errno = 0;
+    int md = mkdir("/ffat/0", 0777);
+    Serial.printf("[MKDIR] ret=%d errno=%d\n", md, errno);
+
+    Serial.flush();
+  }
+  // --- end diagnostic ---
 #ifdef NO_PSRAM
   String myDir = "/" + (String)progNumber + "/";
 #else
@@ -131,10 +179,16 @@ void Sampler::Init() {
 #endif
 
   sampleInfoCount = 0;
-  ScanContents(LittleFS, myDir.c_str() , 5);
+  Serial.printf("=== Scanning dir: '%s' ===\n", myDir.c_str());
+  Serial.flush();
+  ScanContents(FFat, myDir.c_str() , 5);
+  Serial.printf("=== ScanContents found %d files ===\n", sampleInfoCount);
+  Serial.flush();
   if (sampleInfoCount<5) {
-    CreateDefaultSamples(LittleFS);
-    ScanContents(LittleFS, myDir.c_str() , 5);
+    CreateDefaultSamples(FFat);
+    ScanContents(FFat, myDir.c_str() , 5);
+    Serial.printf("=== After CreateDefault+rescan: %d files ===\n", sampleInfoCount);
+    Serial.flush();
   }
   repeat = 12;
   repeat = min(sampleInfoCount , repeat); // 12 (an octave) or less
@@ -185,14 +239,15 @@ void Sampler::Init() {
 #endif
 
 //    File f = LittleFS.open( (String)(samplePlayer[i].filename) );
-    File f = LittleFS.open( (String)(filenames[i]) );
+    File f = FFat.open( (String)(filenames[i]) );
 
     if ( f ) {
       size_t len = f.size();
       union wavHeader wav;
       if ( len ) {
         toRead = sizeof(wav.wavHdr);
-        f.read(&(wav.wavHdr[0]),toRead);
+        size_t hdrRead = f.read(&(wav.wavHdr[0]),toRead);
+        if (i < 3) Serial.printf("[WAV%d] hdrRead=%d bytes=%02X %02X %02X %02X sr=%u ds=%u\n", i, hdrRead, wav.wavHdr[0], wav.wavHdr[1], wav.wavHdr[2], wav.wavHdr[3], wav.sampleRate, wav.dataSize);
         len -= toRead;
       }
 
