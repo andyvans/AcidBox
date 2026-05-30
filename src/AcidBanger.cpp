@@ -1,5 +1,6 @@
-#ifdef JUKEBOX
 #include "config.h"
+#include "midi_config.h"
+#ifdef JUKEBOX
 
 // This is The "Endless Acid Banger"
 //
@@ -333,6 +334,7 @@ static void init_midi() {
   //  Serial.begin(115200);
   //  MIDI.begin(MIDI_CHANNEL_OMNI);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(LED_BEAT_PIN, OUTPUT); // AVS Additional LED
   for (int i = 0; i < ButLast; i++) {
     init_button(&buttons[i], button_pins[i], i + 1 );
   }
@@ -391,7 +393,8 @@ static inline uint16_t myRandom(uint16_t max) {
 
 static void read_button(struct Button *button)
 {
-  if (button->numb == 5) { // start/stop is a real button "boot" ( GPIO0 )
+  // AVS Fix so all buttons work
+  if (true){ //if (button->numb == 5) { // start/stop is a real button "boot" ( GPIO0 )
     button->history = (button->history << 1) | (digitalRead(button->pin) == HIGH);
   } else {
     button->history = 0;
@@ -507,12 +510,14 @@ void sequencer_step(byte step) {
 #ifdef FLASH_LED
   if (step % 4 == 0 || step == 1) {
     digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(LED_BEAT_PIN, HIGH);
     #ifdef LOLIN_RGB
       pixels.setPixelColor(0, pixels.Color(rand() % 32, rand() % 32, rand() % 32));
       pixels.show();
     #endif
   }  else {
     digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_BEAT_PIN, LOW);
     #ifdef LOLIN_RGB
       pixels.setPixelColor(0, pixels.Color(0,0,0));
       pixels.show();
