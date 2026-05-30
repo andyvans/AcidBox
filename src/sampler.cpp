@@ -121,6 +121,7 @@ void Sampler::Init() {
     DEBUG("FFat Mount Failed");
     return;
   }
+#ifdef DEBUG_SAMPLER
   Serial.printf("=== FFat MOUNTED OK === total=%u used=%u\n", FFat.totalBytes(), FFat.usedBytes());
   Serial.flush();
 
@@ -168,6 +169,7 @@ void Sampler::Init() {
     Serial.flush();
   }
   // --- end diagnostic ---
+#endif
 #ifdef NO_PSRAM
   String myDir = "/" + (String)progNumber + "/";
 #else
@@ -247,7 +249,9 @@ void Sampler::Init() {
       if ( len ) {
         toRead = sizeof(wav.wavHdr);
         size_t hdrRead = f.read(&(wav.wavHdr[0]),toRead);
+#ifdef DEBUG_SAMPLER
         if (i < 3) Serial.printf("[WAV%d] hdrRead=%d bytes=%02X %02X %02X %02X sr=%u ds=%u\n", i, hdrRead, wav.wavHdr[0], wav.wavHdr[1], wav.wavHdr[2], wav.wavHdr[3], wav.sampleRate, wav.dataSize);
+#endif
         len -= toRead;
       }
 
