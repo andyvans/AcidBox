@@ -10,7 +10,6 @@
 #define JUKEBOX                 // real-time endless auto-compose acid tunes
 #define JUKEBOX_PLAY_ON_START   // should it play on power on, or should it wait for "boot" button to be pressed
 #define MIDI_RAMPS              // this is what makes automated Cutoff-Reso-FX turn
-//#define TEST_POTS               // experimental interactivity with potentiometers connected to POT_PINS[] defined below
 
 //#define USE_INTERNAL_DAC      // use this for testing, SOUND QUALITY SACRIFICED: NOISY 8BIT STEREO
 //#define NO_PSRAM              // if you don't have PSRAM on your board, then use this define, but REVERB TO BE SACRIFICED, ONE SMALL DRUM KIT SAMPLES USED 

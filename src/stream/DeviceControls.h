@@ -16,6 +16,9 @@ private:
     int _pendingChannel;
     unsigned long _lastPositionChangeTime;
     bool _hasPendingChange;       
+    bool _initialChannelStarted;
+    bool _lastUpPressed;
+    bool _lastDownPressed;
     AudioOut* _audioOut;
     
     int ChannelChangeDelayMs = 750;

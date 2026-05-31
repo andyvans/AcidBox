@@ -328,9 +328,6 @@ static void IRAM_ATTR audio_task2(void *userData) {
     
     if (timer2_fired) {
       timer2_fired = false;
-#ifdef TEST_POTS      
-       readPots();
-#endif
        
 #ifdef DEBUG_TIMING
         DEBF ("CORE micros: synt1, synt2, drums, mixer, DMA_LEN\t%d\t%d\t%d\t%d\t%d\r\n" , s1T, s2T, drT, fxT, DMA_BUF_TIME);
@@ -372,8 +369,6 @@ delay(200);
   */
 
   buildTables();
-
-  for (int i = 0; i < POT_NUM; i++) pinMode( POT_PINS[i] , INPUT);
 
   Synth1->Init();
   Synth2->Init();
@@ -452,23 +447,6 @@ static void acidbox_loop() { // default loopTask running on the Core1
 /* 
  *  Some debug and service routines *****************************************************************************************************************************
 */
-
-void readPots() {
-  static const float snap = 0.003f;
-  static int i = 0;
-  float tmp;
-  static const float NORMALIZE_ADC = 1.0f / 4096.0f;
-//read one pot per call
-  tmp = (float)analogRead(POT_PINS[i]) * NORMALIZE_ADC;
-  if (fabs(tmp - param[i]) > snap) {
-    param[i] = tmp;
-  //  paramChange(i, tmp);
-  }
-
-  i++;
-  // if (i >= POT_NUM) i=0;
-  i %= POT_NUM;
-}
 
 void paramChange(uint8_t paramNum, float paramVal) {
   // paramVal === param[paramNum];

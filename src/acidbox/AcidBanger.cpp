@@ -54,18 +54,6 @@
 #define PERCUSSION_NOTE         11 //005
 #define CRASH_NOTE              9 //010
 
-// Pin numbers to which are buttons attached (connect one side of button to pin, the other to ground)
-#define GEN_SYNTH1_BUTTON_PIN   16
-#define GEN_SYNTH2_BUTTON_PIN   17
-#define GEN_NOTES_BUTTON        18
-#define GEN_DRUM_BUTTON         15
-#define PLAY_BUTTON             8
-#define MEM1_BUTTON             14  // unused pin (memory buttons not wired)
-#define MEM2_BUTTON             14
-#define MEM3_BUTTON             14
-#define MEM4_BUTTON             14
-#define MEM5_BUTTON             14
-
 #define send_midi_start() {}
 #define send_midi_stop()  {}
 #define send_midi_tick() {}

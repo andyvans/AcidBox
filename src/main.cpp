@@ -25,13 +25,13 @@ void setup()
   streamerMode = GetStreamerMode();
   if (streamerMode)
   {
-    Serial.println("Streamer mode enabled");
+    Serial.println("Starting Streamer mode");
     streamer = new Streamer();
     streamer->Setup();
   }
   else
   {
-    Serial.println("Streamer mode disabled - starting AcidBox");
+    Serial.println("Starting AcidBox mode");
     acidBox = new AcidBox();
     acidBox->Setup();
   }

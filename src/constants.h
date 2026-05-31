@@ -13,10 +13,21 @@
 #define I2S_BCLK_PIN 5
 #define I2S_DOUT_PIN 6
 #define I2S_WCLK_PIN 7
-const uint8_t POT_PINS[POT_NUM] = {15, 16, 17};
 
 // AcidBox status LED pin
 #define LED_BEAT_PIN 13
 
 // Streamer mode enable pin
 #define STREAMER_ENABLE_PIN 21
+
+// AcidBanger button pins (button to GND, use INPUT_PULLUP)
+#define GEN_SYNTH1_BUTTON_PIN 16
+#define GEN_SYNTH2_BUTTON_PIN 17
+#define GEN_NOTES_BUTTON 18
+#define GEN_DRUM_BUTTON 15
+#define PLAY_BUTTON 8
+#define MEM1_BUTTON 14  // unused pin (memory buttons not wired)
+#define MEM2_BUTTON 14
+#define MEM3_BUTTON 14
+#define MEM4_BUTTON 14
+#define MEM5_BUTTON 14
