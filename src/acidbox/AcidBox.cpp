@@ -20,6 +20,7 @@
 
 */
 #pragma GCC optimize ("O2")
+#include "AcidBox.h"
 #include "config.h"
 #include "fx_delay.h"
 #ifndef NO_PSRAM
@@ -268,7 +269,7 @@ static void IRAM_ATTR audio_task2(void *userData) {
  *  Quite an ordinary SETUP() *******************************************************************************************************************************
 */
 
-void setup(void) {
+static void acidbox_setup(void) {
 
 #ifdef DEBUG_ON 
   DEBUG_PORT.begin(115200); 
@@ -354,7 +355,7 @@ void regular_checks();
  *  Finally, the LOOP () ***********************************************************************************************************
 */
 
-void loop() { // default loopTask running on the Core1
+static void acidbox_loop() { // default loopTask running on the Core1
   // you can still place some of your code here
   // or   vTaskDelete(NULL);
   
@@ -440,6 +441,20 @@ void regular_checks() {
 #endif
 
 
+}
+
+AcidBox::AcidBox()
+{
+}
+
+void AcidBox::Setup()
+{
+  acidbox_setup();
+}
+
+void AcidBox::Tick()
+{
+  acidbox_loop();
 }
 
 
