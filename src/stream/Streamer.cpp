@@ -24,6 +24,9 @@ Streamer::~Streamer()
 
 void Streamer::Setup()
 {
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
+
     WiFi.setHostname("UltimateRadio");
 
     WiFiManager wm;
@@ -75,6 +78,16 @@ void Streamer::InitializeAudio()
 
 void Streamer::Tick()
 {
+    static unsigned long lastLedToggleMs = 0;
+    static bool ledState = false;
+    unsigned long now = millis();
+    if (now - lastLedToggleMs >= 1000)
+    {
+        lastLedToggleMs = now;
+        ledState = !ledState;
+        digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
+    }
+
     if (_audioOut != nullptr)
         _audioOut->Tick();
 }
