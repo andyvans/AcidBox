@@ -21,6 +21,8 @@
 */
 #pragma GCC optimize ("O2")
 #include "AcidBox.h"
+#include <esp_attr.h>
+#include <esp_heap_caps.h>
 #include "config.h"
 #include "fx_delay.h"
 #ifndef NO_PSRAM
@@ -69,19 +71,19 @@ MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<HardwareSerial, Serial2
 
 
 // lookuptables
-static float DRAM_ATTR WORD_ALIGNED_ATTR midi_pitches[128];
-static float DRAM_ATTR WORD_ALIGNED_ATTR  midi_phase_steps[128];
-static float DRAM_ATTR WORD_ALIGNED_ATTR  midi_tbl_steps[128];
-static float DRAM_ATTR WORD_ALIGNED_ATTR  exp_square_tbl[TABLE_SIZE+1];
+static float* midi_pitches = nullptr;
+static float* midi_phase_steps = nullptr;
+static float* midi_tbl_steps = nullptr;
+static float* exp_square_tbl = nullptr;
 //static float square_tbl[TABLE_SIZE+1];
-static float DRAM_ATTR WORD_ALIGNED_ATTR  saw_tbl[TABLE_SIZE+1];
-static float DRAM_ATTR WORD_ALIGNED_ATTR  exp_tbl[TABLE_SIZE+1];
-static float DRAM_ATTR WORD_ALIGNED_ATTR  knob_tbl[TABLE_SIZE+1]; // exp-like curve
-static float DRAM_ATTR WORD_ALIGNED_ATTR  shaper_tbl[TABLE_SIZE+1]; // illinear tanh()-like curve
-static float DRAM_ATTR WORD_ALIGNED_ATTR  lim_tbl[TABLE_SIZE+1]; // diode soft clipping at about 1.0
-static float DRAM_ATTR WORD_ALIGNED_ATTR  sin_tbl[TABLE_SIZE+1];
-static float DRAM_ATTR WORD_ALIGNED_ATTR  norm1_tbl[16][16]; // cutoff-reso pair gain compensation
-static float DRAM_ATTR WORD_ALIGNED_ATTR  norm2_tbl[16][16]; // wavefolder-overdrive gain compensation
+static float* saw_tbl = nullptr;
+static float* exp_tbl = nullptr;
+static float* knob_tbl = nullptr; // exp-like curve
+static float* shaper_tbl = nullptr; // illinear tanh()-like curve
+static float* lim_tbl = nullptr; // diode soft clipping at about 1.0
+static float* sin_tbl = nullptr;
+static float (*norm1_tbl)[16] = nullptr; // cutoff-reso pair gain compensation
+static float (*norm2_tbl)[16] = nullptr; // wavefolder-overdrive gain compensation
 //static float (*tables[])[TABLE_SIZE+1] = {&exp_square_tbl, &square_tbl, &saw_tbl, &exp_tbl};
 
 // service variables and arrays
@@ -94,16 +96,17 @@ static int    ctrl_hold_notes;
 // Audio buffers of all kinds
 volatile int current_gen_buf = 0; // set of buffers for generation
 volatile int current_out_buf = 1 - 0; // set of buffers for output
-static float DRAM_ATTR WORD_ALIGNED_ATTR  synth1_buf[2][DMA_BUF_LEN];    // synth1 mono
-static float DRAM_ATTR WORD_ALIGNED_ATTR  synth2_buf[2][DMA_BUF_LEN];    // synth2 mono
-static float DRAM_ATTR WORD_ALIGNED_ATTR  drums_buf_l[2][DMA_BUF_LEN];   // drums L
-static float DRAM_ATTR WORD_ALIGNED_ATTR  drums_buf_r[2][DMA_BUF_LEN];   // drums R
-static float DRAM_ATTR WORD_ALIGNED_ATTR  mix_buf_l[2][DMA_BUF_LEN];     // mix L channel
-static float DRAM_ATTR WORD_ALIGNED_ATTR  mix_buf_r[2][DMA_BUF_LEN];     // mix R channel
-static union {                              // a dirty trick, instead of true converting
+static float (*synth1_buf)[DMA_BUF_LEN] = nullptr;    // synth1 mono
+static float (*synth2_buf)[DMA_BUF_LEN] = nullptr;    // synth2 mono
+static float (*drums_buf_l)[DMA_BUF_LEN] = nullptr;   // drums L
+static float (*drums_buf_r)[DMA_BUF_LEN] = nullptr;   // drums R
+static float (*mix_buf_l)[DMA_BUF_LEN] = nullptr;     // mix L channel
+static float (*mix_buf_r)[DMA_BUF_LEN] = nullptr;     // mix R channel
+typedef union {                              // a dirty trick, instead of true converting
   int16_t WORD_ALIGNED_ATTR _signed[DMA_BUF_LEN * 2];
   uint16_t WORD_ALIGNED_ATTR _unsigned[DMA_BUF_LEN * 2];
-} out_buf[2];                               // i2s L+R output buffer
+} AudioOutBuffer;
+static AudioOutBuffer* out_buf = nullptr;   // i2s L+R output buffer
 size_t bytes_written;                       // i2s result
 
 volatile boolean processing = false;
@@ -116,19 +119,96 @@ volatile float dly_k1, dly_k2, dly_k3;
 TaskHandle_t SynthTask1;
 TaskHandle_t SynthTask2;
 
-// 303-like synths
-SynthVoice Synth1(0); 
-SynthVoice Synth2(1); 
+// 303-like synths (lazily allocated)
+SynthVoice* Synth1 = nullptr;
+SynthVoice* Synth2 = nullptr;
 
-// 808-like drums
-Sampler Drums( DEFAULT_DRUMKIT ); // argument: starting drumset [0 .. total-1]
+// 808-like drums (lazily allocated)
+Sampler* Drums = nullptr;
 
-// Global effects
-FxDelay Delay;
+// Global effects (lazily allocated)
+FxDelay* Delay = nullptr;
 #ifndef NO_PSRAM
-FxReverb Reverb;
+FxReverb* Reverb = nullptr;
 #endif
-Compressor Comp;
+Compressor* Comp = nullptr;
+
+static bool allocateAcidBoxState()
+{
+  if (midi_pitches != nullptr)
+  {
+    return true;
+  }
+
+#ifdef BOARD_HAS_PSRAM
+  uint32_t tableCaps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
+#else
+  uint32_t tableCaps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+#endif
+  uint32_t bufferCaps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+
+  midi_pitches = (float*)heap_caps_calloc(128, sizeof(float), tableCaps);
+  midi_phase_steps = (float*)heap_caps_calloc(128, sizeof(float), tableCaps);
+  midi_tbl_steps = (float*)heap_caps_calloc(128, sizeof(float), tableCaps);
+  exp_square_tbl = (float*)heap_caps_calloc(TABLE_SIZE + 1, sizeof(float), tableCaps);
+  saw_tbl = (float*)heap_caps_calloc(TABLE_SIZE + 1, sizeof(float), tableCaps);
+  exp_tbl = (float*)heap_caps_calloc(TABLE_SIZE + 1, sizeof(float), tableCaps);
+  knob_tbl = (float*)heap_caps_calloc(TABLE_SIZE + 1, sizeof(float), tableCaps);
+  shaper_tbl = (float*)heap_caps_calloc(TABLE_SIZE + 1, sizeof(float), tableCaps);
+  lim_tbl = (float*)heap_caps_calloc(TABLE_SIZE + 1, sizeof(float), tableCaps);
+  sin_tbl = (float*)heap_caps_calloc(TABLE_SIZE + 1, sizeof(float), tableCaps);
+  norm1_tbl = (float (*)[16])heap_caps_calloc(16, sizeof(*norm1_tbl), tableCaps);
+  norm2_tbl = (float (*)[16])heap_caps_calloc(16, sizeof(*norm2_tbl), tableCaps);
+
+  synth1_buf = (float (*)[DMA_BUF_LEN])heap_caps_calloc(2, sizeof(*synth1_buf), bufferCaps);
+  synth2_buf = (float (*)[DMA_BUF_LEN])heap_caps_calloc(2, sizeof(*synth2_buf), bufferCaps);
+  drums_buf_l = (float (*)[DMA_BUF_LEN])heap_caps_calloc(2, sizeof(*drums_buf_l), bufferCaps);
+  drums_buf_r = (float (*)[DMA_BUF_LEN])heap_caps_calloc(2, sizeof(*drums_buf_r), bufferCaps);
+  mix_buf_l = (float (*)[DMA_BUF_LEN])heap_caps_calloc(2, sizeof(*mix_buf_l), bufferCaps);
+  mix_buf_r = (float (*)[DMA_BUF_LEN])heap_caps_calloc(2, sizeof(*mix_buf_r), bufferCaps);
+  out_buf = (AudioOutBuffer*)heap_caps_calloc(2, sizeof(*out_buf), bufferCaps);
+
+  Synth1 = new SynthVoice(0);
+  Synth2 = new SynthVoice(1);
+  Drums  = new Sampler(DEFAULT_DRUMKIT);
+  Delay  = new FxDelay();
+#ifndef NO_PSRAM
+  Reverb = new FxReverb();
+#endif
+  Comp   = new Compressor();
+
+  bool ok = midi_pitches != nullptr
+    && midi_phase_steps != nullptr
+    && midi_tbl_steps != nullptr
+    && exp_square_tbl != nullptr
+    && saw_tbl != nullptr
+    && exp_tbl != nullptr
+    && knob_tbl != nullptr
+    && shaper_tbl != nullptr
+    && lim_tbl != nullptr
+    && sin_tbl != nullptr
+    && norm1_tbl != nullptr
+    && norm2_tbl != nullptr
+    && synth1_buf != nullptr
+    && synth2_buf != nullptr
+    && drums_buf_l != nullptr
+    && drums_buf_r != nullptr
+    && mix_buf_l != nullptr
+    && mix_buf_r != nullptr
+    && out_buf != nullptr
+    && Synth1 != nullptr
+    && Synth2 != nullptr
+    && Drums != nullptr
+    && Delay != nullptr
+    && Comp != nullptr;
+
+  if (!ok)
+  {
+    DEBUG("AcidBox: state allocation failed");
+  }
+
+  return ok;
+}
 
 // Arduino IDE used tab-style single translation unit behavior. For PlatformIO,
 // we include dependent implementation units explicitly to preserve that model.
@@ -271,6 +351,11 @@ static void IRAM_ATTR audio_task2(void *userData) {
 
 static void acidbox_setup(void) {
 
+  if (!allocateAcidBoxState()) {
+    DEBUG("AcidBox setup aborted");
+    return;
+  }
+
 #ifdef DEBUG_ON 
   DEBUG_PORT.begin(115200); 
 #endif
@@ -290,14 +375,14 @@ delay(200);
 
   for (int i = 0; i < POT_NUM; i++) pinMode( POT_PINS[i] , INPUT);
 
-  Synth1.Init();
-  Synth2.Init();
-  Drums.Init();
+  Synth1->Init();
+  Synth2->Init();
+  Drums->Init();
 #ifndef NO_PSRAM
-  Reverb.Init();
+  Reverb->Init();
 #endif
-  Delay.Init();
-  Comp.Init(SAMPLE_RATE);
+  Delay->Init();
+  Comp->Init(SAMPLE_RATE);
 #ifdef JUKEBOX
   init_midi(); // AcidBanger function
 #endif
@@ -392,20 +477,20 @@ void paramChange(uint8_t paramNum, float paramVal) {
   switch (paramNum) {
     case 0:
       //set_bpm( 40.0f + (paramVal * 160.0f));
-      Synth2.ParseCC(CC_303_CUTOFF, paramVal);
+      Synth2->ParseCC(CC_303_CUTOFF, paramVal);
       break;
     case 1:
-      Synth2.ParseCC(CC_303_RESO, paramVal);
+      Synth2->ParseCC(CC_303_RESO, paramVal);
       break;
     case 2:
-      Synth2.ParseCC(CC_303_OVERDRIVE, paramVal);
-      Synth2.ParseCC(CC_303_DISTORTION, paramVal);
+      Synth2->ParseCC(CC_303_OVERDRIVE, paramVal);
+      Synth2->ParseCC(CC_303_DISTORTION, paramVal);
       break;
     case 3:
-      Synth2.ParseCC(CC_303_ENVMOD_LVL, paramVal);
+      Synth2->ParseCC(CC_303_ENVMOD_LVL, paramVal);
       break;
     case 4:
-      Synth2.ParseCC(CC_303_ACCENT_LVL, paramVal);
+      Synth2->ParseCC(CC_303_ACCENT_LVL, paramVal);
       break;
     default:
       {}
@@ -460,19 +545,19 @@ void AcidBox::Tick()
 
 inline void IRAM_ATTR drums_generate() {
     for (int i=0; i < DMA_BUF_LEN; i++){
-      Drums.Process( &drums_buf_l[current_gen_buf][i], &drums_buf_r[current_gen_buf][i] );      
+      Drums->Process( &drums_buf_l[current_gen_buf][i], &drums_buf_r[current_gen_buf][i] );      
     } 
 }
 
 inline void IRAM_ATTR synth1_generate() {
     for (int i=0; i < DMA_BUF_LEN; i++){
-      synth1_buf[current_gen_buf][i] = Synth1.getSample() ;      
+      synth1_buf[current_gen_buf][i] = Synth1->getSample() ;      
     } 
 }
 
 inline void IRAM_ATTR synth2_generate() {
     for (int i=0; i < DMA_BUF_LEN; i++){
-      synth2_buf[current_gen_buf][i] = Synth2.getSample() ;      
+      synth2_buf[current_gen_buf][i] = Synth2->getSample() ;      
     } 
 }
 
@@ -483,31 +568,31 @@ void IRAM_ATTR mixer() { // sum buffers
   static float synth1_out_l, synth1_out_r, synth2_out_l, synth2_out_r, drums_out_l, drums_out_r;
   static float dly_l, dly_r, rvb_l, rvb_r;
   static float mono_mix;
-    dly_k1 = Synth1._sendDelay;
-    dly_k2 = Synth2._sendDelay;
-    dly_k3 = Drums._sendDelay;
+    dly_k1 = Synth1->_sendDelay;
+    dly_k2 = Synth2->_sendDelay;
+    dly_k3 = Drums->_sendDelay;
 #ifndef NO_PSRAM 
-    rvb_k1 = Synth1._sendReverb;
-    rvb_k2 = Synth2._sendReverb;
-    rvb_k3 = Drums._sendReverb;
+    rvb_k1 = Synth1->_sendReverb;
+    rvb_k2 = Synth2->_sendReverb;
+    rvb_k3 = Drums->_sendReverb;
 #endif
     for (int i=0; i < DMA_BUF_LEN; i++) { 
       drums_out_l = drums_buf_l[current_out_buf][i];
       drums_out_r = drums_buf_r[current_out_buf][i];
 
-      synth1_out_l = Synth1.GetPan() * synth1_buf[current_out_buf][i];
-      synth1_out_r = (1.0f - Synth1.GetPan()) * synth1_buf[current_out_buf][i];
-      synth2_out_l = Synth2.GetPan() * synth2_buf[current_out_buf][i];
-      synth2_out_r = (1.0f - Synth2.GetPan()) * synth2_buf[current_out_buf][i];
+      synth1_out_l = Synth1->GetPan() * synth1_buf[current_out_buf][i];
+      synth1_out_r = (1.0f - Synth1->GetPan()) * synth1_buf[current_out_buf][i];
+      synth2_out_l = Synth2->GetPan() * synth2_buf[current_out_buf][i];
+      synth2_out_r = (1.0f - Synth2->GetPan()) * synth2_buf[current_out_buf][i];
 
       
       dly_l = dly_k1 * synth1_out_l + dly_k2 * synth2_out_l + dly_k3 * drums_out_l; // delay bus
       dly_r = dly_k1 * synth1_out_r + dly_k2 * synth2_out_r + dly_k3 * drums_out_r;
-      Delay.Process( &dly_l, &dly_r );
+      Delay->Process( &dly_l, &dly_r );
 #ifndef NO_PSRAM
       rvb_l = rvb_k1 * synth1_out_l + rvb_k2 * synth2_out_l + rvb_k3 * drums_out_l; // reverb bus
       rvb_r = rvb_k1 * synth1_out_r + rvb_k2 * synth2_out_r + rvb_k3 * drums_out_r;
-      Reverb.Process( &rvb_l, &rvb_r );
+      Reverb->Process( &rvb_l, &rvb_r );
 
       mix_buf_l[current_out_buf][i] = (synth1_out_l + synth2_out_l + drums_out_l + dly_l + rvb_l);
       mix_buf_r[current_out_buf][i] = (synth1_out_r + synth2_out_r + drums_out_r + dly_r + rvb_r);
@@ -518,11 +603,11 @@ void IRAM_ATTR mixer() { // sum buffers
       mono_mix = 0.5f * (mix_buf_l[current_out_buf][i] + mix_buf_r[current_out_buf][i]);
   //    Comp.Process(mono_mix);     // calculate gain based on a mono mix
 
-      Comp.Process(drums_out_l*0.25f);  // calc compressor gain, side-chain driven by drums
+      Comp->Process(drums_out_l*0.25f);  // calc compressor gain, side-chain driven by drums
 
 
-      mix_buf_l[current_out_buf][i] = (Comp.Apply( 0.25f * mix_buf_l[current_out_buf][i]));
-      mix_buf_r[current_out_buf][i] = (Comp.Apply( 0.25f * mix_buf_r[current_out_buf][i]));
+      mix_buf_l[current_out_buf][i] = (Comp->Apply( 0.25f * mix_buf_l[current_out_buf][i]));
+      mix_buf_r[current_out_buf][i] = (Comp->Apply( 0.25f * mix_buf_r[current_out_buf][i]));
 
       
 #ifdef DEBUG_MASTER_OUT

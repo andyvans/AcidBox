@@ -1,6 +1,6 @@
 #include "config.h"
 
-inline float bilinearLookup(float (&table)[16][16], float x, float y) {
+inline float bilinearLookup(float (*table)[16], float x, float y) {
   float const kmap = 0.1181f; // map from 0-127 to 0-14.99
   int32_t i,j;
   float fi,fj;
@@ -22,7 +22,7 @@ inline float bilinearLookup(float (&table)[16][16], float x, float y) {
   return res3;
 }
 
-inline float  lookupTable(float (&table)[TABLE_SIZE+1], float index ) { // lookup value in a table by float index, using linear interpolation
+inline float  lookupTable(float *table, float index ) { // lookup value in a table by float index, using linear interpolation
   float v1, v2, res;
   int32_t i;
   float f;

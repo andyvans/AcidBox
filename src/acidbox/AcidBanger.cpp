@@ -492,8 +492,8 @@ void sequencer_step(byte step) {
 #ifdef PRELOAD_ALL
     if (flip(30)) {
       //change drumkit
-      current_drumkit = myRandom(((Drums.GetSamplesCount()-1)/12)) * 12 ;
-      Drums.SetProgram(current_drumkit);
+      current_drumkit = myRandom(((Drums->GetSamplesCount()-1)/12)) * 12 ;
+      Drums->SetProgram(current_drumkit);
 #ifdef DEBUG_JUKEBOX
       DEBF("Selected drumkit: %d\r\n" , current_drumkit);
 #endif
