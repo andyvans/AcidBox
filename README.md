@@ -47,11 +47,39 @@ On first boot (or when Wi-Fi credentials are missing), the unit starts a Wi-Fi s
 
 The player supports MP3 streams and AAC streams (AAC requires ESP32-S3 with PSRAM).
 
+## Integration: Tape Deck MIDI Controller
+
+This project can be paired with the external controller project:
+
+- https://github.com/andyvans/tapedeck-midi-acidbox
+
+<img src="media/integration.png" width="100%"> Cassette deck integration
+
+In that setup, AcidBox runs as the synth/drum sound engine while the tape deck project acts as a MIDI control surface and transport-style interface. This gives you a physical, performance-oriented workflow for driving patterns, parameters, and playback behavior.
+
+### How the control link works
+
+The tape deck project sends MIDI messages to AcidBox, typically including:
+
+- Note On / Note Off for triggering synth and drum voices
+- Control Change (CC) for parameters such as cutoff, resonance, decay, accent, delay, and reverb
+- Optional transport-style actions mapped to specific MIDI events
+
+On the AcidBox side, incoming MIDI is parsed and routed to synth/drum engines, where each CC updates the corresponding parameter in real time.
+
+At the same time, the tape deck controller keeps a local copy of the values it sends and renders those values on its display, so the UI reflects the active parameter state while you perform.
+
+When integrating the two projects, make sure both sides use matching MIDI channel assignments and CC mappings.
+
+Project write-up and build notes:
+
+- https://www.codify.nz/acidbox-tape-deck/
+
 ## Radio Config
 
-The station list and startup behavior are controlled by `radio-config.txt`, which is downloaded at startup from the URL set in [src/main.cpp](src/main.cpp).
+The station list and startup behavior are controlled by [radio-config.txt](radio-config.txt), which is downloaded at startup from the URL set in [src/main.cpp](src/main.cpp).
 
-For reliable streaming, an ESP32-S3 with an external IPX antenna is recommended to improve Wi-Fi signal strength and reduce audio glitches.
+For reliable streaming, an ESP32-S3 with an external IPX antenna is recommended to improve Wi-Fi signal strength and reduce dropouts.
 
 1. Line 1: default channel index (0-based)
 2. Line 2: startup volume (0.0 to 1.0)
