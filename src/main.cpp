@@ -23,6 +23,7 @@ void setup()
 #ifdef DEBUG_ON
   DEBUG_PORT.begin(115200);
 #endif
+
   DEBUG("Boot: AcidBox setup() entered");
   delay(1000);  
   pinMode(STREAMER_ENABLE_PIN, INPUT_PULLUP);
