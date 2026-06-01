@@ -1,5 +1,6 @@
 #include "DeviceControls.h"
 #include "AudioOut.h"
+#include "logging.h"
 
 DeviceControls::DeviceControls() :
     _audioOut(nullptr),
@@ -17,7 +18,7 @@ void DeviceControls::Setup(AudioOut* audioOut)
 {
     _audioOut = audioOut;
 
-    Serial.println("=== Setting up DeviceControls ===");
+    DEBUG("=== Setting up DeviceControls ===");
 
     // Max value is maxChannels - 1 since we're using 0-based indexing
     _currentChannel = _audioOut != nullptr ? _audioOut->GetCurrentChannel() : 0;

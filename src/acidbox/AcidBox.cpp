@@ -212,6 +212,7 @@ static bool allocateAcidBoxState()
 
 // Arduino IDE used tab-style single translation unit behavior. For PlatformIO,
 // we include dependent implementation units explicitly to preserve that model.
+float bpm = 130.0f; // single definition; config.h declares it extern
 #include "general.cpp"
 #include "tables.cpp"
 #include "midi_handler.cpp"

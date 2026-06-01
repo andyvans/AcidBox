@@ -1,13 +1,14 @@
 #include "ConfigLoader.h"
 #include <WiFiClientSecure.h>
 #include <AudioTools.h>
+#include "logging.h"
 
 using namespace audio_tools;
 
 bool ConfigLoader::LoadConfig(const char* configUrl, RadioConfig& config)
 {
-    Serial.print("Loading config from: ");
-    Serial.println(configUrl);
+    DEB("Loading config from: ");
+    DEBUG(configUrl);
 
     WiFiClientSecure client;
     client.setInsecure(); // Skip certificate validation for simplicity
@@ -19,8 +20,8 @@ bool ConfigLoader::LoadConfig(const char* configUrl, RadioConfig& config)
 
     if (statusCode != 200)
     {
-        Serial.print("HTTP request failed with status: ");
-        Serial.println(statusCode);
+        DEB("HTTP request failed with status: ");
+        DEBUG(statusCode);
         return false;
     }
 
@@ -44,9 +45,9 @@ bool ConfigLoader::LoadConfig(const char* configUrl, RadioConfig& config)
 
     http.end();
 
-    Serial.print("Downloaded ");
-    Serial.print(data.length());
-    Serial.println(" bytes");
+    DEB("Downloaded ");
+    DEB(data.length());
+    DEBUG(" bytes");
 
     return ParseConfig(data, config);
 }
@@ -55,14 +56,14 @@ bool ConfigLoader::ParseConfig(const String& data, RadioConfig& config)
 {
     if (data.length() == 0)
     {
-        Serial.println("No data to parse");
+        DEBUG("No data to parse");
         return false;
     }
 
     config.channels = new ChannelConfig[MAX_CHANNELS];
     if (config.channels == nullptr)
     {
-        Serial.println("Failed to allocate channel array");
+        DEBUG("Failed to allocate channel array");
         return false;
     }
 
@@ -93,14 +94,14 @@ bool ConfigLoader::ParseConfig(const String& data, RadioConfig& config)
         if (lineNum == 0)
         {
             config.defaultChannel = line.toInt();
-            Serial.print("Default channel: ");
-            Serial.println(config.defaultChannel);
+            DEB("Default channel: ");
+            DEBUG(config.defaultChannel);
         }
         else if (lineNum == 1)
         {
             config.volume = line.toFloat();
-            Serial.print("Volume: ");
-            Serial.println(config.volume);
+            DEB("Volume: ");
+            DEBUG(config.volume);
         }
         else if (config.channelCount < MAX_CHANNELS)
         {
@@ -131,8 +132,8 @@ bool ConfigLoader::ParseConfig(const String& data, RadioConfig& config)
                 config.channels[config.channelCount].url = url;
                 config.channels[config.channelCount].name = name;
 
-                Serial.printf("Channel %d URL: %s\n", config.channelCount, url);
-                Serial.printf("Channel %d Name: %s\n", config.channelCount, name ? name : "");
+                DEBF("Channel %d URL: %s\n", config.channelCount, url);
+                DEBF("Channel %d Name: %s\n", config.channelCount, name ? name : "");
 
                 config.channelCount++;
             }
@@ -141,9 +142,9 @@ bool ConfigLoader::ParseConfig(const String& data, RadioConfig& config)
         lineNum++;
     }
 
-    Serial.print("Loaded ");
-    Serial.print(config.channelCount);
-    Serial.println(" channels");
+    DEB("Loaded ");
+    DEB(config.channelCount);
+    DEBUG(" channels");
 
     return config.channelCount > 0;
 }

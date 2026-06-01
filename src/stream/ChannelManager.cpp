@@ -1,5 +1,6 @@
 #include "ChannelManager.h"
 #include <WiFi.h>
+#include "logging.h"
 
 // Define the array of fallback radio channels
 const ChannelConfig ChannelManager::_defaultChannels[] = {
@@ -18,20 +19,20 @@ RadioConfig* ChannelManager::LoadChannels(const char* configUrl)
 {
     if (WiFi.status() != WL_CONNECTED)
     {
-        Serial.println("WiFi not connected, cannot load config");
+        DEBUG("WiFi not connected, cannot load config");
         return nullptr;
     }
 
-    Serial.println("Loading radio configuration...");
+    DEBUG("Loading radio configuration...");
     RadioConfig* radioConfig = new RadioConfig();
     if (ConfigLoader::LoadConfig(configUrl, *radioConfig))
     {
-        Serial.println("Config loaded successfully");
+        DEBUG("Config loaded successfully");
         return radioConfig;
     }
     else
     {
-        Serial.println("Config load failed");
+        DEBUG("Config load failed");
         delete radioConfig;
         return nullptr;
     }

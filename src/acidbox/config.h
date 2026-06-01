@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include "constants.h"
+#include "logging.h"
 
 #define PROG_NAME       "ESP32 AcidBox"
 #define VERSION         "v.1.5.0 S3"
@@ -17,7 +18,6 @@
 #define FLASH_LED               // flash built-in LED
 //#define LOLIN_RGB               // Flashes the LOLIN S3 built-in RGB-LED
 
-//#define DEBUG_ON              // note that debugging eats ticks initially belonging to real-time tasks, so sound output will be spoild in most cases, turn it off for production build
 //#define DEBUG_MASTER_OUT      // serial monitor plotter will draw the output waveform
 //#define DEBUG_SAMPLER
 //#define DEBUG_SYNTH
@@ -27,12 +27,12 @@
 //#define DEBUG_MIDI
 
 //#define MIDI_USB_DEVICE                     // use this option if you want to operate via USB with the sampler seen as a MIDI device (-50 kBytes of available RAM) // TEMP DISABLED FOR DEBUG
-#define MIDI_VIA_SERIAL       // use this option to enable Hairless MIDI on Serial port @115200 baud (USB connector), THIS WILL BLOCK SERIAL DEBUGGING as well // TEMP DISABLED FOR DEBUG
-#define MIDI_VIA_SERIAL2        // use this option if you want to operate by standard MIDI @31250baud, UART2 (Serial2), 
+//#define MIDI_VIA_SERIAL       // use this option to enable Hairless MIDI on Serial port @115200 baud (USB connector), THIS WILL BLOCK SERIAL DEBUGGING as well
+//#define MIDI_VIA_SERIAL2        // use this option if you want to operate by standard MIDI @31250baud, UART2 (Serial2), 
 
 //#define ENABLE_MIDI_OUT 
 
-float bpm = 130.0f;
+extern float bpm;
 
 #ifdef USE_INTERNAL_DAC
 #define SAMPLE_RATE     22050   // price for increasing this value having NO_PSRAM is less delay time, you won't hear the difference at 8bit/sample
@@ -130,18 +130,6 @@ const float  NORM_RADIANS = ONE_DIV_TWOPI * TABLE_SIZE;
   #undef DEBUG_ON
 #endif
 
-// debug macros
-#ifdef DEBUG_ON
-  #define DEB(...)    DEBUG_PORT.print(__VA_ARGS__) 
-  #define DEBF(...)   DEBUG_PORT.printf(__VA_ARGS__)
-  #define DEBUG(...)  DEBUG_PORT.println(__VA_ARGS__)
-#else
-  #define DEB(...)
-  #define DEBF(...)
-  #define DEBUG(...)
-#endif
-
-
 // normalizing matrices for TB filter and distortion/overdrive pairs
 #define NORM1_DEPTH 1.0f 
 #define NORM2_DEPTH 1.0f
@@ -230,7 +218,7 @@ const float wfolder_overdrive[16][16] = { // D-weighting curve linear amplitude
 };
 const float wfolder_overdrive_avg = 36.59637f;
 
-float cutoff_reso[16][16] = { // k-weigted mean quad
+static float cutoff_reso[16][16] = { // k-weigted mean quad
 {6.434804, 4.714645, 3.947374, 2.694166, 2.351397, 2.500912, 2.929582, 2.654394, 2.284407, 1.838856, 2.644853, 2.766961, 2.814959, 2.350692, 1.996572, 2.199751},
 {6.612917, 5.302139, 3.893952, 2.907703, 2.001597, 2.857677, 2.988061, 3.030843, 2.442840, 2.147922, 2.721878, 2.790063, 2.963842, 2.972988, 2.489201, 2.509848},
 {7.350744, 5.508491, 4.067600, 2.890480, 2.176190, 2.566737, 2.546578, 2.596522, 2.278280, 1.956051, 2.581862, 2.548600, 3.036592, 2.538826, 2.439919, 1.898532},

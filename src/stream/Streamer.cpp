@@ -1,5 +1,6 @@
 #include "Streamer.h"
 #include <WiFiManager.h>
+#include "logging.h"
 
 Streamer::Streamer()
 {
@@ -31,17 +32,17 @@ void Streamer::Setup()
 
     WiFiManager wm;
     wm.setConfigPortalTimeout(180);
-    Serial.println("Connecting to WiFi...");
+    DEBUG("Connecting to WiFi...");
     if (wm.autoConnect("AcidBox-Streamer-Setup"))
     {
-        Serial.println("WiFi connected!");
-        Serial.print("IP: ");
-        Serial.println(WiFi.localIP());
+        DEBUG("WiFi connected!");
+        DEB("IP: ");
+        DEBUG(WiFi.localIP());
         InitializeAudio();
         return;
     }
 
-    Serial.println("WiFi connection failed - restarting...");
+    DEBUG("WiFi connection failed - restarting...");
     ESP.restart();
 }
 
@@ -55,14 +56,14 @@ void Streamer::InitializeAudio()
     // AAC support requires PSRAM due to the larger buffers
     bool supportAac = ESP.getPsramSize() > 0;
     if (!supportAac)
-        Serial.println("No PSRAM detected - AAC support disabled");
+        DEBUG("No PSRAM detected - AAC support disabled");
 
-    Serial.println("=== AcidBox Streamer Starting ===");
+    DEBUG("=== AcidBox Streamer Starting ===");
 
     _radioConfig = ChannelManager::LoadChannels(CONFIG_URL);
     if (_radioConfig == nullptr)
     {
-        Serial.println("Using default channels");
+        DEBUG("Using default channels");
         _radioConfig = ChannelManager::GetDefaultChannels();
     }
 
@@ -94,7 +95,7 @@ void Streamer::Tick()
 
 void Streamer::StartDeviceTask()
 {
-    Serial.println("Creating device task");
+    DEBUG("Creating device task");
     xTaskCreatePinnedToCore(
         ProcessDevicesTask,
         "Device",

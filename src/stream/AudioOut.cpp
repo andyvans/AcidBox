@@ -1,5 +1,6 @@
 #include "AudioOut.h"
 #include "AudioTools/AudioCodecs/CodecMP3Helix.h"
+#include "logging.h"
 
 AudioOut::AudioOut(bool supportAac)
 {
@@ -20,19 +21,19 @@ AudioOut::~AudioOut()
 
 void AudioOut::Setup(RadioConfig* config)
 {
-    Serial.println("=== Setting up AudioOut ===");
+    DEBUG("=== Setting up AudioOut ===");
 
     if (config->channels != nullptr && config->channelCount > 0)
     {
         _channels = config->channels;
         _channelCount = config->channelCount;
-        Serial.print("Using ");
-        Serial.print(_channelCount);
-        Serial.println(" dynamically loaded channels");
+        DEB("Using ");
+        DEB(_channelCount);
+        DEBUG(" dynamically loaded channels");
     }
     else
     {
-        Serial.println("No channels provided!");
+        DEBUG("No channels provided!");
         _channels = nullptr;
         _channelCount = 0;
     }
@@ -44,7 +45,7 @@ void AudioOut::Setup(RadioConfig* config)
 
     AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Warning);
 
-    Serial.println("Creating URLStream...");
+    DEBUG("Creating URLStream...");
     _urlStream = new URLStreamBuffered();
     _audioSourceUrl = new AudioSourceDynamicURL(*_urlStream, nullptr, _currentChannel);
 
@@ -54,11 +55,11 @@ void AudioOut::Setup(RadioConfig* config)
         _audioSourceUrl->addURL(_channels[i].url);
     }
 
-    Serial.println("Creating decoders...");
+    DEBUG("Creating decoders...");
     _mp3Decoder = new MP3DecoderHelix();
     _aacDecoder = _supportAac ? new AACDecoderHelix() : nullptr;
 
-    Serial.println("Creating MultiDecoder...");
+    DEBUG("Creating MultiDecoder...");
     _multiDecoder = new MultiDecoder(*_urlStream);
     _multiDecoder->addDecoder(*_mp3Decoder, "audio/mp3");
     _multiDecoder->addDecoder(*_mp3Decoder, "audio/mpeg");
@@ -68,24 +69,24 @@ void AudioOut::Setup(RadioConfig* config)
         _multiDecoder->addDecoder(*_aacDecoder, "audio/aacp");
     }
 
-    Serial.println("Creating I2S stream...");
+    DEBUG("Creating I2S stream...");
     _i2sOut = new I2SStream();
 
-    Serial.println("Configuring I2S output...");
+    DEBUG("Configuring I2S output...");
     auto configOut = _i2sOut->defaultConfig(TX_MODE);
     configOut.pin_bck = I2S_BCLK_PIN;
     configOut.pin_ws = I2S_WCLK_PIN;
     configOut.pin_data = I2S_DOUT_PIN;
 
-    Serial.println("Starting I2S stream...");
+    DEBUG("Starting I2S stream...");
     _i2sOut->begin(configOut);
 
-    Serial.println("Creating audio player...");
+    DEBUG("Creating audio player...");
     _audioPlayer = new AudioPlayer(*_audioSourceUrl, *_i2sOut, *_multiDecoder);
         
     _audioPlayer->setVolume(config->volume); // Set volume from config
 
-    Serial.println("=== AudioOut setup complete ===");
+    DEBUG("=== AudioOut setup complete ===");
 }
 
 int AudioOut::GetChannelCount()
@@ -111,8 +112,8 @@ void AudioOut::Start(int channel)
     if (channel >= _channelCount) channel = _channelCount - 1;
     if (channel != _pendingChannel)
     {
-        Serial.print("Changing pending audio to channel: ");
-        Serial.println(_channels[channel].url);
+        DEB("Changing pending audio to channel: ");
+        DEBUG(_channels[channel].url);
         _pendingChannel = channel;
     }
     _mode = AUDIO_MODE_RADIO;
@@ -135,7 +136,7 @@ void AudioOut::Tick()
 
     if (_mode == AUDIO_MODE_OFF && _isPlaying)
     {
-        Serial.println("Stopping audio playback");
+        DEBUG("Stopping audio playback");
         _audioPlayer->end();
         _isPlaying = false;
     }
@@ -143,15 +144,15 @@ void AudioOut::Tick()
     if (_pendingChannel != _currentChannel)
     {
         _currentChannel = _pendingChannel;
-        Serial.print("Switching to channel: ");
-        Serial.println(_channels[_currentChannel].url);
+        DEB("Switching to channel: ");
+        DEBUG(_channels[_currentChannel].url);
         _audioPlayer->setIndex(_currentChannel);
     }
 
     if (_mode == AUDIO_MODE_RADIO && !_isPlaying)
     {
-        Serial.print("Starting channel: ");
-        Serial.println(_channels[_currentChannel].url);
+        DEB("Starting channel: ");
+        DEBUG(_channels[_currentChannel].url);
         _audioPlayer->begin(_currentChannel);
         _isPlaying = true;
     }
