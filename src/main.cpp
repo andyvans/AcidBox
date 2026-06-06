@@ -86,5 +86,5 @@ static void checkStreamerMode()
 
 static bool GetStreamerMode()
 {
-  return digitalRead(STREAMER_ENABLE_PIN) == LOW;
+  return digitalRead(STREAMER_ENABLE_PIN) == HIGH;
 }
