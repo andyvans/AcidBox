@@ -13,7 +13,7 @@ const ChannelConfig ChannelManager::_defaultChannels[] = {
 
 const int ChannelManager::_defaultChannelCount = sizeof(ChannelManager::_defaultChannels) / sizeof(ChannelManager::_defaultChannels[0]);
 const int ChannelManager::_defaultChannel = 0;
-const float ChannelManager::_defaultVolume = 0.5f;
+const float ChannelManager::_defaultVolume = 0.7f;
 
 RadioConfig* ChannelManager::LoadChannels(const char* configUrl)
 {

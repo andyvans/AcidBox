@@ -3,6 +3,7 @@
 // Note that MIDI_VIA_SERIAL & MIDI_VIA_SERIAL2 conflict with Serial debugging, so if you want to use them,
 // you have to disable Serial debugging (see config.h) or use MIDI_USB_DEVICE instead
 // Note that debugging eats ticks initially belonging to real-time tasks and can affect sound.
+
 //#define DEBUG_ON   
 
 #ifndef DEBUG_PORT

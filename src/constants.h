@@ -20,6 +20,9 @@
 // Streamer mode enable pin
 #define STREAMER_ENABLE_PIN 21
 
+// Configuration URL - change this to your config file location
+#define CONFIG_URL "https://raw.githubusercontent.com/andyvans/acidbox/main/radio-config.txt"
+
 // AcidBanger button pins (button to GND, use INPUT_PULLUP)
 #define GEN_SYNTH1_BUTTON_PIN 16
 #define GEN_SYNTH2_BUTTON_PIN 17

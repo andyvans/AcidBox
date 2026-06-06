@@ -6,9 +6,6 @@
 
 class WiFiManager;
 
-// Configuration URL - change this to your config file location
-#define CONFIG_URL "https://raw.githubusercontent.com/andyvans/rinsefm-box/main/radio-config.txt"
-
 class Streamer
 {
 public:

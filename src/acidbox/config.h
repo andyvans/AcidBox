@@ -27,8 +27,8 @@
 //#define DEBUG_MIDI
 
 //#define MIDI_USB_DEVICE                     // use this option if you want to operate via USB with the sampler seen as a MIDI device (-50 kBytes of available RAM) // TEMP DISABLED FOR DEBUG
-//#define MIDI_VIA_SERIAL       // use this option to enable Hairless MIDI on Serial port @115200 baud (USB connector), THIS WILL BLOCK SERIAL DEBUGGING as well
-//#define MIDI_VIA_SERIAL2        // use this option if you want to operate by standard MIDI @31250baud, UART2 (Serial2), 
+#define MIDI_VIA_SERIAL       // use this option to enable Hairless MIDI on Serial port @115200 baud (USB connector), THIS WILL BLOCK SERIAL DEBUGGING as well
+#define MIDI_VIA_SERIAL2        // use this option if you want to operate by standard MIDI @31250baud, UART2 (Serial2), 
 
 //#define ENABLE_MIDI_OUT 
 
