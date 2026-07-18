@@ -23,6 +23,14 @@ void AudioOut::Setup(RadioConfig* config)
 {
     DEBUG("=== Setting up AudioOut ===");
 
+    if (config == nullptr)
+    {
+        DEBUG("AudioOut setup failed: null config");
+        _channels = nullptr;
+        _channelCount = 0;
+        return;
+    }
+
     if (config->channels != nullptr && config->channelCount > 0)
     {
         _channels = config->channels;
@@ -47,6 +55,7 @@ void AudioOut::Setup(RadioConfig* config)
 
     DEBUG("Creating URLStream...");
     _urlStream = new URLStreamBuffered();
+    _urlStream->setBufferSize(kUrlBufferSize, kUrlBufferCount);
     _audioSourceUrl = new AudioSourceDynamicURL(*_urlStream, nullptr, _currentChannel);
 
     // Add all the URLs to the dynamic source
@@ -83,6 +92,9 @@ void AudioOut::Setup(RadioConfig* config)
 
     DEBUG("Creating audio player...");
     _audioPlayer = new AudioPlayer(*_audioSourceUrl, *_i2sOut, *_multiDecoder);
+    _audioPlayer->setBufferSize(kPlayerCopyBufferSize);
+    _audioPlayer->setReference(this);
+    _audioPlayer->setOnStreamChangeCallback(HandleStreamChange);
         
     _audioPlayer->setVolume(config->volume); // Set volume from config
 
@@ -153,8 +165,11 @@ void AudioOut::Tick()
     {
         DEB("Starting channel: ");
         DEBUG(_channels[_currentChannel].url);
-        _audioPlayer->begin(_currentChannel);
-        _isPlaying = true;
+        _isPlaying = _audioPlayer->begin(_currentChannel);
+        if (!_isPlaying)
+        {
+            DEBUG("Audio start failed; will retry on next tick");
+        }
     }
 
     _audioPlayer->copy();
@@ -163,4 +178,32 @@ void AudioOut::Tick()
 bool AudioOut::IsPlaying()
 {
     return _isPlaying && _audioPlayer != nullptr && _audioPlayer->isActive();
+}
+
+void AudioOut::HandleStreamChange(Stream* stream, void* reference)
+{
+    (void)stream;
+    AudioOut* self = static_cast<AudioOut*>(reference);
+    if (self != nullptr)
+    {
+        self->OnStreamChanged(stream);
+    }
+}
+
+void AudioOut::OnStreamChanged(Stream* stream)
+{
+    if (stream == nullptr) return;
+    if (_audioSourceUrl == nullptr || _channels == nullptr || _channelCount <= 0) return;
+
+    int idx = _audioSourceUrl->index();
+    if (idx < 0 || idx >= _channelCount) return;
+
+    if (idx != _currentChannel)
+    {
+        DEB("Audio source switched to channel index: ");
+        DEBUG(idx);
+    }
+
+    _currentChannel = idx;
+    _pendingChannel = idx;
 }
