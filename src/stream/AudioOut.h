@@ -9,9 +9,11 @@
 
 #include <AudioTools.h>
 #include <AudioTools/Communication/AudioHttp.h>
+#include <AudioTools/Communication/HLSStream.h>
 #include <AudioTools/Disk/AudioSourceURL.h>
 #include <AudioTools/AudioCodecs/CodecMP3Helix.h>
 #include <AudioTools/AudioCodecs/CodecAACHelix.h>
+#include <AudioTools/AudioCodecs/CodecMTS.h>
 #include <AudioTools/AudioCodecs/MultiDecoder.h>
 #include "ConfigLoader.h"
 
@@ -44,6 +46,16 @@ public:
     bool IsPlaying();
 
 private:
+    enum StreamKind
+    {
+        STREAM_KIND_DIRECT,
+        STREAM_KIND_HLS,
+    };
+
+    static bool IsHlsUrl(const char* url);
+    void DestroyPipeline();
+    bool BuildPipelineForChannel(int channel);
+
     static void HandleStreamChange(Stream* stream, void* reference);
     void OnStreamChanged(Stream* stream);
 
@@ -53,12 +65,16 @@ private:
     volatile bool _isPlaying;
     bool _usingDynamicChannels;
     bool _supportAac;
+    float _volume;
+    StreamKind _streamKind;
 
     URLStreamBuffered* _urlStream;
+    HLSStream* _hlsStream;
     AudioSourceDynamicURL* _audioSourceUrl;
     I2SStream* _i2sOut;
     MP3DecoderHelix* _mp3Decoder;
     AACDecoderHelix* _aacDecoder;
+    MTSDecoder* _mtsDecoder;
     MultiDecoder* _multiDecoder;
     AudioPlayer* _audioPlayer;
 

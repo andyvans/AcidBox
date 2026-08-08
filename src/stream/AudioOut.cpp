@@ -5,6 +5,8 @@
 AudioOut::AudioOut(bool supportAac)
 {
     _supportAac = supportAac;
+    _volume = 0.5f;
+    _streamKind = STREAM_KIND_DIRECT;
     _currentChannel = 0;
     _pendingChannel = 0;
     _mode = AUDIO_MODE_OFF;
@@ -12,10 +14,20 @@ AudioOut::AudioOut(bool supportAac)
     _usingDynamicChannels = false;
     _channels = nullptr;
     _channelCount = 0;
+    _urlStream = nullptr;
+    _hlsStream = nullptr;
+    _audioSourceUrl = nullptr;
+    _i2sOut = nullptr;
+    _mp3Decoder = nullptr;
+    _aacDecoder = nullptr;
+    _mtsDecoder = nullptr;
+    _multiDecoder = nullptr;
+    _audioPlayer = nullptr;
 }
 
 AudioOut::~AudioOut()
 {
+    DestroyPipeline();
     // Note: Dynamic channel memory is managed by RadioConfig
 }
 
@@ -52,51 +64,13 @@ void AudioOut::Setup(RadioConfig* config)
     }
 
     AudioToolsLogger.begin(Serial, AudioToolsLogLevel::Warning);
+    _volume = config->volume;
 
-    DEBUG("Creating URLStream...");
-    _urlStream = new URLStreamBuffered();
-    _urlStream->setBufferSize(kUrlBufferSize, kUrlBufferCount);
-    _audioSourceUrl = new AudioSourceDynamicURL(*_urlStream, nullptr, _currentChannel);
-
-    // Add all the URLs to the dynamic source
-    for (int i = 0; i < _channelCount; i++)
+    if (!BuildPipelineForChannel(_currentChannel))
     {
-        _audioSourceUrl->addURL(_channels[i].url);
+        DEBUG("AudioOut setup failed: could not build playback pipeline");
+        return;
     }
-
-    DEBUG("Creating decoders...");
-    _mp3Decoder = new MP3DecoderHelix();
-    _aacDecoder = _supportAac ? new AACDecoderHelix() : nullptr;
-
-    DEBUG("Creating MultiDecoder...");
-    _multiDecoder = new MultiDecoder(*_urlStream);
-    _multiDecoder->addDecoder(*_mp3Decoder, "audio/mp3");
-    _multiDecoder->addDecoder(*_mp3Decoder, "audio/mpeg");
-    if (_supportAac)
-    {
-        _multiDecoder->addDecoder(*_aacDecoder, "audio/aac");
-        _multiDecoder->addDecoder(*_aacDecoder, "audio/aacp");
-    }
-
-    DEBUG("Creating I2S stream...");
-    _i2sOut = new I2SStream();
-
-    DEBUG("Configuring I2S output...");
-    auto configOut = _i2sOut->defaultConfig(TX_MODE);
-    configOut.pin_bck = I2S_BCLK_PIN;
-    configOut.pin_ws = I2S_WCLK_PIN;
-    configOut.pin_data = I2S_DOUT_PIN;
-
-    DEBUG("Starting I2S stream...");
-    _i2sOut->begin(configOut);
-
-    DEBUG("Creating audio player...");
-    _audioPlayer = new AudioPlayer(*_audioSourceUrl, *_i2sOut, *_multiDecoder);
-    _audioPlayer->setBufferSize(kPlayerCopyBufferSize);
-    _audioPlayer->setReference(this);
-    _audioPlayer->setOnStreamChangeCallback(HandleStreamChange);
-        
-    _audioPlayer->setVolume(config->volume); // Set volume from config
 
     DEBUG("=== AudioOut setup complete ===");
 }
@@ -155,17 +129,32 @@ void AudioOut::Tick()
 
     if (_pendingChannel != _currentChannel)
     {
+        bool wasPlaying = _isPlaying;
+        if (!BuildPipelineForChannel(_pendingChannel))
+        {
+            DEBUG("Channel switch failed: pipeline build error");
+            return;
+        }
+
         _currentChannel = _pendingChannel;
-        DEB("Switching to channel: ");
+        DEB("Switched to channel: ");
         DEBUG(_channels[_currentChannel].url);
-        _audioPlayer->setIndex(_currentChannel);
+
+        if (wasPlaying && _mode == AUDIO_MODE_RADIO)
+        {
+            _isPlaying = _audioPlayer->begin(0);
+            if (!_isPlaying)
+            {
+                DEBUG("Audio start failed after channel switch; will retry on next tick");
+            }
+        }
     }
 
     if (_mode == AUDIO_MODE_RADIO && !_isPlaying)
     {
         DEB("Starting channel: ");
         DEBUG(_channels[_currentChannel].url);
-        _isPlaying = _audioPlayer->begin(_currentChannel);
+        _isPlaying = _audioPlayer->begin(0);
         if (!_isPlaying)
         {
             DEBUG("Audio start failed; will retry on next tick");
@@ -193,17 +182,121 @@ void AudioOut::HandleStreamChange(Stream* stream, void* reference)
 void AudioOut::OnStreamChanged(Stream* stream)
 {
     if (stream == nullptr) return;
-    if (_audioSourceUrl == nullptr || _channels == nullptr || _channelCount <= 0) return;
+    // Pipeline is built per selected channel; callback can be used for diagnostics.
+    (void)stream;
+}
 
-    int idx = _audioSourceUrl->index();
-    if (idx < 0 || idx >= _channelCount) return;
+bool AudioOut::IsHlsUrl(const char* url)
+{
+    if (url == nullptr) return false;
+    String u(url);
+    u.toLowerCase();
+    return u.indexOf(".m3u8") >= 0;
+}
 
-    if (idx != _currentChannel)
+void AudioOut::DestroyPipeline()
+{
+    if (_audioPlayer != nullptr)
     {
-        DEB("Audio source switched to channel index: ");
-        DEBUG(idx);
+        _audioPlayer->end();
+        delete _audioPlayer;
+        _audioPlayer = nullptr;
+    }
+    delete _multiDecoder;
+    _multiDecoder = nullptr;
+    delete _mtsDecoder;
+    _mtsDecoder = nullptr;
+    delete _aacDecoder;
+    _aacDecoder = nullptr;
+    delete _mp3Decoder;
+    _mp3Decoder = nullptr;
+    delete _audioSourceUrl;
+    _audioSourceUrl = nullptr;
+    delete _urlStream;
+    _urlStream = nullptr;
+    delete _hlsStream;
+    _hlsStream = nullptr;
+    delete _i2sOut;
+    _i2sOut = nullptr;
+    _isPlaying = false;
+}
+
+bool AudioOut::BuildPipelineForChannel(int channel)
+{
+    if (_channels == nullptr || _channelCount <= 0) return false;
+    if (channel < 0 || channel >= _channelCount) return false;
+
+    const char* url = _channels[channel].url;
+    if (url == nullptr) return false;
+
+    DestroyPipeline();
+
+    bool useHls = IsHlsUrl(url);
+    _streamKind = useHls ? STREAM_KIND_HLS : STREAM_KIND_DIRECT;
+
+    if (useHls)
+    {
+        DEBUG("Building HLS playback pipeline");
+        _hlsStream = new HLSStream();
+        _hlsStream->setBufferSize(kUrlBufferSize, kUrlBufferCount);
+        _audioSourceUrl = new AudioSourceDynamicURL(*_hlsStream, nullptr, 0);
+    }
+    else
+    {
+        DEBUG("Building direct URL playback pipeline");
+        _urlStream = new URLStreamBuffered();
+        _urlStream->setBufferSize(kUrlBufferSize, kUrlBufferCount);
+        _audioSourceUrl = new AudioSourceDynamicURL(*_urlStream, nullptr, 0);
     }
 
-    _currentChannel = idx;
-    _pendingChannel = idx;
+    _audioSourceUrl->addURL(url);
+
+    _mp3Decoder = new MP3DecoderHelix();
+    _aacDecoder = _supportAac ? new AACDecoderHelix() : nullptr;
+    if (useHls)
+    {
+        if (_aacDecoder == nullptr)
+        {
+            DEBUG("HLS AAC playback requires AAC decoder support");
+            DestroyPipeline();
+            return false;
+        }
+        _mtsDecoder = new MTSDecoder(*_aacDecoder);
+    }
+
+    if (useHls)
+    {
+        _multiDecoder = new MultiDecoder(*_hlsStream);
+    }
+    else
+    {
+        _multiDecoder = new MultiDecoder(*_urlStream);
+    }
+
+    _multiDecoder->addDecoder(*_mp3Decoder, "audio/mp3");
+    _multiDecoder->addDecoder(*_mp3Decoder, "audio/mpeg");
+    if (_supportAac)
+    {
+        _multiDecoder->addDecoder(*_aacDecoder, "audio/aac");
+        _multiDecoder->addDecoder(*_aacDecoder, "audio/aacp");
+    }
+    if (useHls)
+    {
+        _multiDecoder->addDecoder(*_mtsDecoder, "video/mp2t");
+    }
+
+    _i2sOut = new I2SStream();
+    auto configOut = _i2sOut->defaultConfig(TX_MODE);
+    configOut.pin_bck = I2S_BCLK_PIN;
+    configOut.pin_ws = I2S_WCLK_PIN;
+    configOut.pin_data = I2S_DOUT_PIN;
+    _i2sOut->begin(configOut);
+
+    _audioPlayer = new AudioPlayer(*_audioSourceUrl, *_i2sOut, *_multiDecoder);
+    _audioPlayer->setBufferSize(kPlayerCopyBufferSize);
+    _audioPlayer->setReference(this);
+    _audioPlayer->setOnStreamChangeCallback(HandleStreamChange);
+    _audioPlayer->setVolume(_volume);
+
+    return true;
 }
