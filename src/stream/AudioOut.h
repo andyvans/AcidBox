@@ -1,12 +1,6 @@
 #pragma once
 #include <Arduino.h>
 #include "Constants.h"
-
-// Audio-Tools: Buffer sizes adjusted for memory constraints
-#define DEFAULT_BUFFER_SIZE 1536 // Default is 1024
-#define I2S_BUFFER_SIZE 512 // Default is 512
-#define I2S_BUFFER_COUNT 8 // Default is 6
-
 #include <AudioTools.h>
 #include <AudioTools/Communication/AudioHttp.h>
 #include <AudioTools/Disk/AudioSourceURL.h>
@@ -29,7 +23,6 @@ public:
     // Streaming buffer tuning: prefer smaller chunks with more buffers.
     static constexpr int kUrlBufferSize = 1024;
     static constexpr int kUrlBufferCount = 64;
-    static constexpr int kPlayerCopyBufferSize = 4096;
 
     AudioOut(bool supportAac);
     ~AudioOut();

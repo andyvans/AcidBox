@@ -92,7 +92,8 @@ void AudioOut::Setup(RadioConfig* config)
 
     DEBUG("Creating audio player...");
     _audioPlayer = new AudioPlayer(*_audioSourceUrl, *_i2sOut, *_multiDecoder);
-    _audioPlayer->setBufferSize(kPlayerCopyBufferSize);
+    // Default 100 ms sleep when I2S is full is longer than the DMA buffer; let the I2S write block instead.
+    _audioPlayer->setDelayIfOutputFull(0);
     _audioPlayer->setReference(this);
     _audioPlayer->setOnStreamChangeCallback(HandleStreamChange);
         
