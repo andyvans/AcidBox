@@ -9,6 +9,7 @@ AudioOut::AudioOut(bool supportAac)
     _pendingChannel = 0;
     _mode = AUDIO_MODE_OFF;
     _isPlaying = false;
+    _prebufferUntilMs = 0;
     _usingDynamicChannels = false;
     _channels = nullptr;
     _channelCount = 0;
@@ -174,6 +175,12 @@ void AudioOut::Tick()
         }
     }
 
+    if ((int32_t)(millis() - _prebufferUntilMs) < 0)
+    {
+        delay(5);
+        return;
+    }
+
     _audioPlayer->copy();
 }
 
@@ -195,6 +202,7 @@ void AudioOut::HandleStreamChange(Stream* stream, void* reference)
 void AudioOut::OnStreamChanged(Stream* stream)
 {
     if (stream == nullptr) return;
+    _prebufferUntilMs = millis() + kPrebufferMs;
     if (_audioSourceUrl == nullptr || _channels == nullptr || _channelCount <= 0) return;
 
     int idx = _audioSourceUrl->index();

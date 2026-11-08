@@ -34,3 +34,8 @@
 #define MEM3_BUTTON 14
 #define MEM4_BUTTON 14
 #define MEM5_BUTTON 14
+
+// Audio-Tools: Buffer sizes adjusted for memory constraints
+#define DEFAULT_BUFFER_SIZE 1536 // Default is 1024
+#define I2S_BUFFER_SIZE 512 // Default is 512
+#define I2S_BUFFER_COUNT 8 // Default is 6
